@@ -1,0 +1,619 @@
+/**
+ * ZPOS Admin Interface Styles
+ * Modern, responsive design for the ZPOS admin dashboard and interface
+ */
+
+/* ==========================================================================
+   DASHBOARD STYLES
+   ========================================================================== */
+
+.zpos-admin-wrap {
+    margin: 20px 20px 0 2px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.zpos-dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #ddd;
+}
+
+.zpos-dashboard-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #23282d;
+}
+
+.zpos-dashboard-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.zpos-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.zpos-btn-primary {
+    background: #0073aa;
+    color: white;
+}
+
+.zpos-btn-primary:hover {
+    background: #005a87;
+    color: white;
+}
+
+.zpos-btn-secondary {
+    background: #f1f1f1;
+    color: #555;
+    border: 1px solid #ccc;
+}
+
+.zpos-btn-secondary:hover {
+    background: #e9e9e9;
+    color: #333;
+}
+
+/* ==========================================================================
+   DASHBOARD FILTERS
+   ========================================================================== */
+
+.zpos-dashboard-filters {
+    background: white;
+    padding: 15px 20px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.zpos-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.zpos-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.zpos-filter-group label {
+    font-weight: 500;
+    color: #555;
+    white-space: nowrap;
+}
+
+.zpos-filter-group select,
+.zpos-filter-group input {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.zpos-date-inputs {
+    display: none;
+    gap: 8px;
+    align-items: center;
+}
+
+.zpos-date-inputs.active {
+    display: flex;
+}
+
+/* ==========================================================================
+   DASHBOARD CARDS
+   ========================================================================== */
+
+.zpos-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.zpos-stat-card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.zpos-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.zpos-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--card-color, #0073aa);
+}
+
+/* Card Color Variables */
+.zpos-stat-card.products { --card-color: #2271b1; }
+.zpos-stat-card.customers { --card-color: #00a32a; }
+.zpos-stat-card.orders { --card-color: #ff8c00; }
+.zpos-stat-card.revenue { --card-color: #8b5cf6; }
+.zpos-stat-card.today-orders { --card-color: #14b8a6; }
+.zpos-stat-card.today-revenue { --card-color: #dc2626; }
+.zpos-stat-card.low-stock { --card-color: #f59e0b; }
+.zpos-stat-card.quick-actions { --card-color: #6b7280; }
+
+.zpos-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+.zpos-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+.zpos-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--card-color, #0073aa);
+    color: white;
+    font-size: 18px;
+}
+
+.zpos-card-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #23282d;
+    margin: 10px 0;
+    line-height: 1.2;
+}
+
+.zpos-card-change {
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.zpos-card-change.positive {
+    color: #00a32a;
+}
+
+.zpos-card-change.negative {
+    color: #d63638;
+}
+
+.zpos-card-change.neutral {
+    color: #646970;
+}
+
+/* Quick Actions Card Specific Styles */
+.zpos-quick-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.zpos-quick-action {
+    padding: 10px;
+    background: #f8f9fa;
+    border: 1px solid #e2e4e7;
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    color: #555;
+    font-size: 12px;
+    font-weight: 500;
+    transition: background 0.2s ease;
+}
+
+.zpos-quick-action:hover {
+    background: #e8e9ea;
+    color: #333;
+}
+
+.zpos-quick-action .dashicons {
+    display: block;
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+/* ==========================================================================
+   CHARTS SECTION
+   ========================================================================== */
+
+.zpos-charts-section {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 25px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.zpos-charts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e2e4e7;
+}
+
+.zpos-charts-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #23282d;
+    margin: 0;
+}
+
+.zpos-chart-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.zpos-chart-toggle {
+    background: none;
+    border: 1px solid #ddd;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #555;
+    transition: all 0.2s ease;
+}
+
+.zpos-chart-toggle.active {
+    background: #0073aa;
+    color: white;
+    border-color: #0073aa;
+}
+
+.zpos-chart-toggle:hover:not(.active) {
+    background: #f1f1f1;
+}
+
+.zpos-charts-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+}
+
+.zpos-chart-container {
+    position: relative;
+    height: 400px;
+}
+
+.zpos-chart-container canvas {
+    max-height: 100%;
+}
+
+/* ==========================================================================
+   RECENT ACTIVITY SECTION
+   ========================================================================== */
+
+.zpos-recent-activity {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 25px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.zpos-activity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e2e4e7;
+}
+
+.zpos-activity-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #23282d;
+    margin: 0;
+}
+
+.zpos-activity-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.zpos-activity-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f1f1f1;
+    gap: 12px;
+}
+
+.zpos-activity-item:last-child {
+    border-bottom: none;
+}
+
+.zpos-activity-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.zpos-activity-icon.order {
+    background: #ff8c00;
+}
+
+.zpos-activity-icon.customer {
+    background: #00a32a;
+}
+
+.zpos-activity-icon.product {
+    background: #2271b1;
+}
+
+.zpos-activity-content {
+    flex: 1;
+}
+
+.zpos-activity-description {
+    font-size: 14px;
+    color: #23282d;
+    margin: 0 0 4px 0;
+}
+
+.zpos-activity-time {
+    font-size: 12px;
+    color: #646970;
+}
+
+.zpos-activity-amount {
+    font-weight: 600;
+    color: #00a32a;
+    font-size: 14px;
+}
+
+/* ==========================================================================
+   LOADING STATES
+   ========================================================================== */
+
+.zpos-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: #646970;
+}
+
+.zpos-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    animation: zpos-spin 1s linear infinite;
+    margin-right: 10px;
+}
+
+@keyframes zpos-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN
+   ========================================================================== */
+
+@media (max-width: 1200px) {
+    .zpos-charts-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
+
+@media (max-width: 782px) {
+    .zpos-admin-wrap {
+        margin: 10px 10px 0 0;
+    }
+    
+    .zpos-dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .zpos-dashboard-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .zpos-dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .zpos-filter-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .zpos-filter-group {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .zpos-charts-section,
+    .zpos-recent-activity {
+        padding: 15px;
+    }
+    
+    .zpos-chart-container {
+        height: 300px;
+    }
+}
+
+@media (max-width: 600px) {
+    .zpos-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .zpos-quick-actions {
+        grid-template-columns: 1fr;
+    }
+    
+    .zpos-card-value {
+        font-size: 24px;
+    }
+    
+    .zpos-dashboard-filters {
+        padding: 10px 15px;
+    }
+}
+
+/* ==========================================================================
+   UTILITY CLASSES
+   ========================================================================== */
+
+.zpos-text-center {
+    text-align: center;
+}
+
+.zpos-text-right {
+    text-align: right;
+}
+
+.zpos-text-muted {
+    color: #646970;
+}
+
+.zpos-text-success {
+    color: #00a32a;
+}
+
+.zpos-text-warning {
+    color: #f59e0b;
+}
+
+.zpos-text-error {
+    color: #d63638;
+}
+
+.zpos-mb-0 { margin-bottom: 0; }
+.zpos-mb-10 { margin-bottom: 10px; }
+.zpos-mb-20 { margin-bottom: 20px; }
+.zpos-mb-30 { margin-bottom: 30px; }
+
+.zpos-mt-0 { margin-top: 0; }
+.zpos-mt-10 { margin-top: 10px; }
+.zpos-mt-20 { margin-top: 20px; }
+.zpos-mt-30 { margin-top: 30px; }
+
+.zpos-hidden { display: none; }
+.zpos-visible { display: block; }
+
+/* ==========================================================================
+   ANIMATION CLASSES
+   ========================================================================== */
+
+.zpos-fade-in {
+    animation: zpos-fadeIn 0.3s ease-in;
+}
+
+@keyframes zpos-fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.zpos-slide-in {
+    animation: zpos-slideIn 0.3s ease-out;
+}
+
+@keyframes zpos-slideIn {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* ==========================================================================
+   WORDPRESS ADMIN OVERRIDES
+   ========================================================================== */
+
+.zpos-admin-wrap .notice {
+    margin: 15px 0;
+}
+
+.zpos-admin-wrap .widefat {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.zpos-admin-wrap .wp-list-table {
+    background: white;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .zpos-stat-card {
+        background: #1e1e1e;
+        border-color: #333;
+        color: #e0e0e0;
+    }
+    
+    .zpos-card-value {
+        color: #e0e0e0;
+    }
+    
+    .zpos-charts-section,
+    .zpos-recent-activity {
+        background: #1e1e1e;
+        border-color: #333;
+    }
+    
+    .zpos-dashboard-filters {
+        background: #1e1e1e;
+        border-color: #333;
+    }
+}

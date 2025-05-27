@@ -49,9 +49,7 @@ class ZPOS_Admin {
     public function __construct($plugin_name, $version) {
         $this->plugin_name = $plugin_name;
         $this->version = $version;
-    }
-
-    /**
+    }    /**
      * Register the stylesheets for the admin area.
      *
      * @since    1.0.0
@@ -89,21 +87,33 @@ class ZPOS_Admin {
                 $this->plugin_name,
                 ZPOS_PLUGIN_URL . 'assets/js/admin.js',
                 array('jquery'),
-                $this->version,
+                $this->version . '.' . time(), // Add timestamp to force cache refresh
                 false
-            );
-
-            // Enqueue Chart.js for reports and dashboard
+            );            // Enqueue Chart.js for reports and dashboard
             wp_enqueue_script(
                 'chartjs',
                 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js',
                 array(),
                 '4.4.0',
                 false
-            );            // Localize script for AJAX
-            wp_localize_script($this->plugin_name, 'zpos_admin_vars', array(
+            );
+            
+            // Localize script for AJAX
+            wp_localize_script($this->plugin_name, 'zpos_admin', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('zpos_admin_nonce'),
+                'text' => array(
+                    'loading' => __('Loading...', 'zpos'),
+                    'no_products' => __('No products found.', 'zpos'),
+                    'all_categories' => __('All Categories', 'zpos'),
+                    'items' => __('items', 'zpos'),
+                    'previous' => __('Previous', 'zpos'),
+                    'next' => __('Next', 'zpos'),
+                    'save' => __('Save', 'zpos'),
+                    'cancel' => __('Cancel', 'zpos'),
+                    'delete' => __('Delete', 'zpos'),
+                    'confirm_delete' => __('Are you sure you want to delete this?', 'zpos')
+                ),
                 'text_domain' => 'zpos'
             ));
         }

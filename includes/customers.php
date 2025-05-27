@@ -149,8 +149,7 @@ class ZPOS_Customers {
             'current_page' => $args['page']
         );
     }
-    
-    /**
+      /**
      * Get customer by ID
      */
     public function get_customer($id) {
@@ -158,6 +157,16 @@ class ZPOS_Customers {
         
         $sql = "SELECT * FROM $this->table_name WHERE id = %d";
         return $wpdb->get_row($wpdb->prepare($sql, $id));
+    }
+
+    /**
+     * Get customer by email
+     */
+    public function get_customer_by_email($email) {
+        global $wpdb;
+        
+        $sql = "SELECT * FROM $this->table_name WHERE email = %s";
+        return $wpdb->get_row($wpdb->prepare($sql, $email));
     }
 
     /**

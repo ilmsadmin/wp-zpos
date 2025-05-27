@@ -28,6 +28,7 @@ class ZPOS_Warranty {
      * @since    1.0.0
      */
     public function __construct() {
+        // Register AJAX actions
         add_action('wp_ajax_zpos_get_warranty_packages', array($this, 'ajax_get_warranty_packages'));
         add_action('wp_ajax_zpos_save_warranty_package', array($this, 'ajax_save_warranty_package'));
         add_action('wp_ajax_zpos_delete_warranty_package', array($this, 'ajax_delete_warranty_package'));
@@ -48,6 +49,66 @@ class ZPOS_Warranty {
         if (!wp_next_scheduled('zpos_daily_warranty_check')) {
             wp_schedule_event(time(), 'daily', 'zpos_daily_warranty_check');
         }
+        
+        // Register additional AJAX actions
+        add_action('wp_ajax_zpos_save_warranty', array($this, 'ajax_save_warranty'));
+        add_action('wp_ajax_zpos_generate_serial_number', array($this, 'ajax_generate_serial_number'));
+        add_action('wp_ajax_zpos_get_customers_list', array($this, 'ajax_get_customers_list'));
+        add_action('wp_ajax_zpos_get_products_list', array($this, 'ajax_get_products_list'));
+        add_action('wp_ajax_zpos_export_warranties', array($this, 'ajax_export_warranties'));
+        add_action('wp_ajax_zpos_send_warranty_notifications', array($this, 'ajax_send_warranty_notifications'));
+    }
+
+    /**
+     * Get recent warranties
+     *
+     * @since    1.0.0
+     * @param    int      $limit    Number of warranties to retrieve
+     * @return   array    Array of recent warranties
+     */
+    public function get_recent_warranties($limit = 5) {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'zpos_warranties';
+        $table_packages = $wpdb->prefix . 'zpos_warranty_packages';
+        
+        $warranties = $wpdb->get_results($wpdb->prepare("
+            SELECT 
+                w.*,
+                p.name as package_name,
+                p.duration_months
+            FROM {$table_name} w
+            LEFT JOIN {$table_packages} p ON w.package_id = p.id
+            ORDER BY w.created_at DESC
+            LIMIT %d
+        ", $limit));
+        
+        // Process warranties to add additional information
+        foreach ($warranties as &$warranty) {
+            // Calculate warranty status
+            $today = new DateTime();
+            $end_date = new DateTime($warranty->warranty_end_date);
+            $days_remaining = $today->diff($end_date)->days;
+            
+            if ($warranty->status === 'cancelled') {
+                $warranty->status_text = __('Cancelled', 'zpos');
+                $warranty->status_class = 'cancelled';
+            } else if ($warranty->status === 'claimed') {
+                $warranty->status_text = __('Claimed', 'zpos');
+                $warranty->status_class = 'claimed';
+            } else if ($end_date < $today) {
+                $warranty->status_text = __('Expired', 'zpos');
+                $warranty->status_class = 'expired';
+            } else if ($days_remaining <= 30) {
+                $warranty->status_text = __('Expiring Soon', 'zpos');
+                $warranty->status_class = 'expiring';
+            } else {
+                $warranty->status_text = __('Active', 'zpos');
+                $warranty->status_class = 'active';
+            }
+        }
+        
+        return $warranties;
     }
 
     /**
@@ -329,12 +390,22 @@ class ZPOS_Warranty {
         if (!empty($where_values)) {
             $count_sql = $wpdb->prepare($count_sql, $where_values);
         }
-        $total_records = $wpdb->get_var($count_sql);
-        
-        // Get warranties
+        $total_records = $wpdb->get_var($count_sql);          // Get warranties
         $offset = ($args['page'] - 1) * $args['per_page'];
-        $orderby = sanitize_sql_orderby('w.' . $args['orderby'] . ' ' . $args['order']);
+          // Make sure orderby contains a valid column name
+        if (empty($args['orderby']) || $args['orderby'] === '') {
+            $args['orderby'] = 'created_at';
+        }
         
+        // Properly format the ORDER BY clause and check if it's valid
+        $orderby_input = 'w.' . $args['orderby'] . ' ' . $args['order'];
+        $orderby = sanitize_sql_orderby($orderby_input);
+        
+        // If sanitize_sql_orderby returns false, use a default ordering
+        if ($orderby === false) {
+            $orderby = 'w.created_at DESC';
+        }
+          
         $sql = "
             SELECT w.*, p.name as package_name, p.duration_months
             FROM {$table_name} w
@@ -762,6 +833,57 @@ class ZPOS_Warranty {
         );
     }
 
+    /**
+     * Get basic warranty statistics
+     *
+     * @since    1.0.0
+     * @return   array    Array with warranty statistics
+     */
+    public function get_warranty_stats() {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'zpos_warranties';
+        $today = date('Y-m-d');
+        $expiry_threshold = date('Y-m-d', strtotime('+30 days'));
+        
+        // Get total warranties
+        $total_warranties = $wpdb->get_var("SELECT COUNT(*) FROM {$table_name}");
+        
+        // Get active warranties
+        $active_warranties = $wpdb->get_var("
+            SELECT COUNT(*) 
+            FROM {$table_name} 
+            WHERE warranty_end_date >= '{$today}'
+            AND status != 'cancelled'
+            AND status != 'claimed'
+        ");
+        
+        // Get warranties expiring soon (in the next 30 days)
+        $expiring_soon = $wpdb->get_var("
+            SELECT COUNT(*) 
+            FROM {$table_name} 
+            WHERE warranty_end_date BETWEEN '{$today}' AND '{$expiry_threshold}'
+            AND status != 'cancelled'
+            AND status != 'claimed'
+        ");
+        
+        // Get expired warranties
+        $expired_warranties = $wpdb->get_var("
+            SELECT COUNT(*) 
+            FROM {$table_name} 
+            WHERE warranty_end_date < '{$today}'
+            AND status != 'cancelled'
+            AND status != 'claimed'
+        ");
+        
+        return array(
+            'total_warranties' => (int)$total_warranties,
+            'active_warranties' => (int)$active_warranties,
+            'expiring_soon' => (int)$expiring_soon,
+            'expired_warranties' => (int)$expired_warranties
+        );
+    }
+
     // AJAX handlers start here...
 
     /**
@@ -925,8 +1047,7 @@ class ZPOS_Warranty {
         if (!current_user_can('manage_options')) {
             wp_die(__('Insufficient permissions', 'zpos'));
         }
-        
-        $args = array(
+          $args = array(
             'status' => sanitize_text_field($_POST['status'] ?? ''),
             'package_id' => intval($_POST['package_id'] ?? 0),
             'search' => sanitize_text_field($_POST['search'] ?? ''),
@@ -936,9 +1057,28 @@ class ZPOS_Warranty {
             'date_to' => sanitize_text_field($_POST['date_to'] ?? ''),
             'per_page' => intval($_POST['per_page'] ?? 20),
             'page' => intval($_POST['page'] ?? 1),
-            'orderby' => sanitize_text_field($_POST['orderby'] ?? 'created_at'),
-            'order' => sanitize_text_field($_POST['order'] ?? 'DESC')
+            'orderby' => '',
+            'order' => ''
         );
+        
+        // Validate orderby parameter - only allow certain columns
+        $allowed_orderby_columns = array('created_at', 'updated_at', 'warranty_end_date', 'warranty_start_date', 
+                                         'purchase_date', 'product_name', 'customer_name', 'serial_number', 'status');
+        
+        $orderby = sanitize_text_field($_POST['orderby'] ?? 'created_at');
+        if (in_array($orderby, $allowed_orderby_columns)) {
+            $args['orderby'] = $orderby;
+        } else {
+            $args['orderby'] = 'created_at'; // Default fallback
+        }
+        
+        // Validate order direction - only allow ASC or DESC
+        $order = strtoupper(sanitize_text_field($_POST['order'] ?? 'DESC'));
+        if ($order === 'ASC' || $order === 'DESC') {
+            $args['order'] = $order;
+        } else {
+            $args['order'] = 'DESC'; // Default fallback
+        };
         
         $result = $this->get_warranties($args);
         wp_send_json_success($result);
@@ -1055,72 +1195,323 @@ class ZPOS_Warranty {
     }
 
     /**
-     * Get recent warranties
-     *
-     * @since    1.0.0
-     * @param    int    $limit    Number of warranties to retrieve
-     * @return   array  Array of recent warranties
+     * AJAX handler to get customers list
      */
-    public function get_recent_warranties($limit = 10) {
-        global $wpdb;
-        
-        $table_name = $wpdb->prefix . 'zpos_warranties';
-        $packages_table = $wpdb->prefix . 'zpos_warranty_packages';
-        
-        $warranties = $wpdb->get_results($wpdb->prepare("
-            SELECT w.*, p.name as package_name
-            FROM {$table_name} w
-            LEFT JOIN {$packages_table} p ON w.package_id = p.id
-            ORDER BY w.created_at DESC
-            LIMIT %d
-        ", $limit));
-        
-        foreach ($warranties as $warranty) {
-            $warranty->warranty_status = $this->get_warranty_status($warranty);
-            $warranty->days_remaining = (strtotime($warranty->warranty_end_date) - time()) / (60 * 60 * 24);
+    public function ajax_get_customers_list() {
+        // Check nonce
+        if (!check_ajax_referer('zpos_admin_nonce', 'nonce', false)) {
+            wp_send_json_error('Security check failed');
         }
-        
-        return $warranties;
+
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Insufficient permissions');
+        }
+
+        try {
+            $customers = array();
+
+            // Try to get WooCommerce customers first
+            if (class_exists('WooCommerce')) {
+                $customer_query = new WP_User_Query(array(
+                    'role' => 'customer',
+                    'number' => 100,
+                    'orderby' => 'display_name',
+                    'order' => 'ASC'
+                ));
+
+                foreach ($customer_query->get_results() as $user) {
+                    $customers[] = array(
+                        'id' => $user->ID,
+                        'name' => $user->display_name . ' (' . $user->user_email . ')',
+                        'email' => $user->user_email
+                    );
+                }
+            } else {
+                // Fallback to all users
+                $users = get_users(array(
+                    'number' => 100,
+                    'orderby' => 'display_name',
+                    'order' => 'ASC'
+                ));
+
+                foreach ($users as $user) {
+                    $customers[] = array(
+                        'id' => $user->ID,
+                        'name' => $user->display_name . ' (' . $user->user_email . ')',
+                        'email' => $user->user_email
+                    );
+                }
+            }
+
+            wp_send_json_success($customers);
+
+        } catch (Exception $e) {
+            error_log('ZPOS Get Customers Error: ' . $e->getMessage());
+            wp_send_json_error('Failed to load customers: ' . $e->getMessage());
+        }
     }
 
     /**
-     * Get warranty statistics
-     *
-     * @since    1.0.0
-     * @return   array  Array of warranty statistics
+     * AJAX handler to get products list
      */
-    public function get_warranty_stats() {
+    public function ajax_get_products_list() {
+        // Check nonce
+        if (!check_ajax_referer('zpos_admin_nonce', 'nonce', false)) {
+            wp_send_json_error('Security check failed');
+        }
+
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Insufficient permissions');
+        }
+
+        try {
+            $products = array();
+
+            // Try to get WooCommerce products first
+            if (class_exists('WooCommerce')) {
+                $product_query = new WP_Query(array(
+                    'post_type' => 'product',
+                    'posts_per_page' => 100,
+                    'post_status' => 'publish',
+                    'orderby' => 'title',
+                    'order' => 'ASC'
+                ));
+
+                foreach ($product_query->posts as $product) {
+                    $products[] = array(
+                        'id' => $product->ID,
+                        'name' => $product->post_title,
+                        'sku' => get_post_meta($product->ID, '_sku', true)
+                    );
+                }
+                
+                wp_reset_postdata();
+            } else {
+                // Fallback - check for custom products table
+                global $wpdb;
+                $table_name = $wpdb->prefix . 'zpos_products';
+                
+                // Check if custom products table exists
+                if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
+                    $results = $wpdb->get_results("SELECT id, name, sku FROM $table_name WHERE status = 'active' ORDER BY name ASC LIMIT 100");
+                    
+                    foreach ($results as $product) {
+                        $products[] = array(
+                            'id' => $product->id,
+                            'name' => $product->name,
+                            'sku' => $product->sku
+                        );
+                    }
+                }
+            }
+
+            wp_send_json_success($products);
+
+        } catch (Exception $e) {
+            error_log('ZPOS Get Products Error: ' . $e->getMessage());
+            wp_send_json_error('Failed to load products: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * AJAX handler to save warranty
+     */
+    public function ajax_save_warranty() {
+        // Check nonce
+        if (!check_ajax_referer('zpos_admin_nonce', 'nonce', false)) {
+            wp_send_json_error('Security check failed');
+        }
+
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Insufficient permissions');
+        }
+
+        try {
+            $warranty_data = array(
+                'customer_id' => intval($_POST['customer_id']),
+                'product_id' => intval($_POST['product_id']),
+                'package_id' => intval($_POST['package_id']),
+                'serial_number' => sanitize_text_field($_POST['serial_number']),
+                'purchase_date' => sanitize_text_field($_POST['purchase_date']),
+                'notes' => sanitize_textarea_field($_POST['notes'])
+            );
+
+            $warranty_id = !empty($_POST['warranty_id']) ? intval($_POST['warranty_id']) : 0;
+
+            if ($warranty_id > 0) {
+                $result = $this->update_warranty($warranty_id, $warranty_data);
+            } else {
+                $result = $this->create_warranty($warranty_data);
+            }
+
+            if ($result) {
+                wp_send_json_success('Warranty saved successfully');
+            } else {
+                wp_send_json_error('Failed to save warranty');
+            }
+
+        } catch (Exception $e) {
+            error_log('ZPOS Save Warranty Error: ' . $e->getMessage());
+            wp_send_json_error('Error saving warranty: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * AJAX handler to generate serial number
+     */
+    public function ajax_generate_serial_number() {
+        // Check nonce
+        if (!check_ajax_referer('zpos_admin_nonce', 'nonce', false)) {
+            wp_send_json_error('Security check failed');
+        }
+
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Insufficient permissions');
+        }
+
+        try {
+            // Generate a unique serial number
+            $serial = 'WR-' . date('Y') . '-' . strtoupper(wp_generate_password(8, false));
+            
+            wp_send_json_success($serial);
+
+        } catch (Exception $e) {
+            error_log('ZPOS Generate Serial Error: ' . $e->getMessage());
+            wp_send_json_error('Error generating serial number: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Create warranty package
+     */
+    public function create_warranty_package($data) {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'zpos_warranty_packages';
+        
+        $result = $wpdb->insert(
+            $table_name,
+            array(
+                'name' => $data['name'],
+                'duration_months' => $data['duration_months'],
+                'price' => $data['price'],
+                'description' => $data['description'],
+                'status' => $data['status'],
+                'created_at' => current_time('mysql')
+            ),
+            array('%s', '%d', '%f', '%s', '%s', '%s')
+        );
+        
+        return $result !== false;
+    }
+    
+    /**
+     * Update warranty package
+     */
+    public function update_warranty_package($id, $data) {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'zpos_warranty_packages';
+        
+        $result = $wpdb->update(
+            $table_name,
+            array(
+                'name' => $data['name'],
+                'duration_months' => $data['duration_months'],
+                'price' => $data['price'],
+                'description' => $data['description'],
+                'status' => $data['status'],
+                'updated_at' => current_time('mysql')
+            ),
+            array('id' => $id),
+            array('%s', '%d', '%f', '%s', '%s', '%s'),
+            array('%d')
+        );
+        
+        return $result !== false;
+    }
+    
+    /**
+     * Create warranty
+     */
+    public function create_warranty($data) {
         global $wpdb;
         
         $table_name = $wpdb->prefix . 'zpos_warranties';
         
-        // Get total warranties
-        $total_warranties = $wpdb->get_var("SELECT COUNT(*) FROM {$table_name}");
+        // Calculate end date based on package
+        $package = $this->get_warranty_package($data['package_id']);
+        if (!$package) {
+            return false;
+        }
         
-        // Get active warranties
-        $active_warranties = $wpdb->get_var("
-            SELECT COUNT(*) FROM {$table_name} 
-            WHERE status = 'active' AND warranty_end_date >= CURDATE()
-        ");
+        $start_date = $data['purchase_date'];
+        $end_date = date('Y-m-d', strtotime($start_date . ' + ' . $package->duration_months . ' months'));
         
-        // Get expired warranties
-        $expired_warranties = $wpdb->get_var("
-            SELECT COUNT(*) FROM {$table_name} 
-            WHERE status = 'active' AND warranty_end_date < CURDATE()
-        ");
-        
-        // Get warranties expiring in next 30 days
-        $expiring_soon = $wpdb->get_var("
-            SELECT COUNT(*) FROM {$table_name} 
-            WHERE status = 'active' 
-            AND warranty_end_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
-        ");
-        
-        return array(
-            'total_warranties' => intval($total_warranties),
-            'active_warranties' => intval($active_warranties),
-            'expired_warranties' => intval($expired_warranties),
-            'expiring_soon' => intval($expiring_soon)
+        $result = $wpdb->insert(
+            $table_name,
+            array(
+                'customer_id' => $data['customer_id'],
+                'product_id' => $data['product_id'],
+                'package_id' => $data['package_id'],
+                'serial_number' => $data['serial_number'],
+                'purchase_date' => $data['purchase_date'],
+                'start_date' => $start_date,
+                'end_date' => $end_date,
+                'status' => 'active',
+                'notes' => $data['notes'],
+                'created_at' => current_time('mysql')
+            ),
+            array('%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s')
         );
+        
+        return $result !== false;
     }
+    
+    /**
+     * Update warranty
+     */
+    public function update_warranty($id, $data) {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'zpos_warranties';
+        
+        // Recalculate end date if package changed
+        if (isset($data['package_id'])) {
+            $package = $this->get_warranty_package($data['package_id']);
+            if ($package) {
+                $start_date = $data['purchase_date'];
+                $data['end_date'] = date('Y-m-d', strtotime($start_date . ' + ' . $package->duration_months . ' months'));
+            }
+        }
+        
+        $data['updated_at'] = current_time('mysql');
+        
+        $result = $wpdb->update(
+            $table_name,
+            $data,
+            array('id' => $id),
+            null,
+            array('%d')
+        );
+        
+        return $result !== false;
+    }
+    
+    /**
+     * Get warranty package by ID
+     */
+    public function get_warranty_package($id) {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'zpos_warranty_packages';
+        
+        return $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $id));
+    }
+    
+    // ...existing code...
 }

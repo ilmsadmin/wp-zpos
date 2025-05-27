@@ -7,8 +7,8 @@
     'use strict';
 
     // Safety check for localized variables
-    if (typeof zpos_admin_vars === 'undefined') {
-        console.error('ZPOS: zpos_admin_vars is not defined. Admin scripts may not work properly.');
+    if (typeof zpos_admin === 'undefined') {
+        console.error('ZPOS: zpos_admin is not defined. Admin scripts may not work properly.');
         return;
     }
 
@@ -251,11 +251,11 @@
             
             $activityList.html('<div class="zpos-loading"><div class="zpos-spinner"></div>Loading recent activity...</div>');
                   $.ajax({
-            url: zpos_admin_vars.ajax_url,
+            url: zpos_admin.ajax_url,
             type: 'POST',
             data: {
                 action: 'zpos_get_recent_activity',
-                nonce: zpos_admin_vars.nonce,
+                nonce: zpos_admin.nonce,
                 limit: 10
             },
                 success: function(response) {
@@ -316,11 +316,11 @@
          */
         loadDashboardStats: function() {
             $.ajax({
-            url: zpos_admin_vars.ajax_url,
+            url: zpos_admin.ajax_url,
             type: 'POST',
             data: {
                 action: 'zpos_get_dashboard_stats',
-                nonce: zpos_admin_vars.nonce,
+                nonce: zpos_admin.nonce,
                 date_range: this.filters.dateRange,
                 start_date: this.filters.startDate,
                 end_date: this.filters.endDate
@@ -407,11 +407,11 @@
          */
         updateChartData: function() {
             $.ajax({
-            url: zpos_admin_vars.ajax_url,
+            url: zpos_admin.ajax_url,
             type: 'POST',
             data: {
                 action: 'zpos_get_chart_data',
-                nonce: zpos_admin_vars.nonce,
+                nonce: zpos_admin.nonce,
                 date_range: this.filters.dateRange,
                 start_date: this.filters.startDate,
                 end_date: this.filters.endDate
@@ -725,16 +725,16 @@
 
         loadCategories: function() {
             $.ajax({
-                url: zpos_admin_vars.ajax_url,
+                url: zpos_admin.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'zpos_get_categories',
-                    nonce: zpos_admin_vars.nonce
+                    nonce: zpos_admin.nonce
                 },
                 success: function(response) {
                     if (response.success) {
                         const $select = $('#category-filter');
-                        $select.empty().append('<option value="">' + zpos_admin_vars.text.all_categories + '</option>');
+                        $select.empty().append('<option value="">' + zpos_admin.text.all_categories + '</option>');
                         
                         response.data.forEach(function(category) {
                             $select.append('<option value="' + category.id + '">' + category.name + '</option>');
@@ -749,24 +749,24 @@
             const categoryId = $('#category-filter').val();
             
             $.ajax({
-                url: zpos_admin_vars.ajax_url,
+                url: zpos_admin.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'zpos_search_products',
                     search: search,
                     category_id: categoryId,
                     page: ZPOSAdmin.pos.currentPage,
-                    nonce: zpos_admin_vars.nonce
+                    nonce: zpos_admin.nonce
                 },
                 beforeSend: function() {
-                    $('#products-grid').html('<div class="loading-products"><p>' + zpos_admin_vars.text.loading + '</p></div>');
+                    $('#products-grid').html('<div class="loading-products"><p>' + zpos_admin.text.loading + '</p></div>');
                 },
                 success: function(response) {
                     if (response.success) {
                         ZPOSAdmin.displayProducts(response.data.products);
                         ZPOSAdmin.updatePagination(response.data);
                     } else {
-                        $('#products-grid').html('<div class="no-products"><p>' + zpos_admin_vars.text.no_products + '</p></div>');
+                        $('#products-grid').html('<div class="no-products"><p>' + zpos_admin.text.no_products + '</p></div>');
                     }
                 }
             });
@@ -800,14 +800,166 @@
             $grid.html(html);
         },
 
+        updatePagination: function(data) {
+            const $pagination = $('.products-pagination');
+            
+            // Clear existing pagination
+            $pagination.empty();
+            
+            if (!data || !data.total_pages || data.total_pages <= 1) {
+                return;
+            }
+            
+            let paginationHtml = `
+                <div class="pagination-info">
+                    <span class="displaying-num">${data.total || 0} ${zpos_admin.text.items || 'items'}</span>
+                </div>
+                <div class="pagination-links">
+            `;
+            
+            // Previous page button
+            if (ZPOSAdmin.pos.currentPage > 1) {
+                paginationHtml += `<button class="pagination-btn prev-page" data-page="${ZPOSAdmin.pos.currentPage - 1}">&lsaquo; ${zpos_admin.text.previous || 'Previous'}</button>`;
+            }
+            
+            // Page numbers (show max 5 pages around current)
+            const startPage = Math.max(1, ZPOSAdmin.pos.currentPage - 2);
+            const endPage = Math.min(data.total_pages, ZPOSAdmin.pos.currentPage + 2);
+            
+            if (startPage > 1) {
+                paginationHtml += `<button class="pagination-btn page-number" data-page="1">1</button>`;
+                if (startPage > 2) {
+                    paginationHtml += `<span class="pagination-dots">...</span>`;
+                }
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const activeClass = i === ZPOSAdmin.pos.currentPage ? 'active' : '';
+                paginationHtml += `<button class="pagination-btn page-number ${activeClass}" data-page="${i}">${i}</button>`;
+            }
+            
+            if (endPage < data.total_pages) {
+                if (endPage < data.total_pages - 1) {
+                    paginationHtml += `<span class="pagination-dots">...</span>`;
+                }
+                paginationHtml += `<button class="pagination-btn page-number" data-page="${data.total_pages}">${data.total_pages}</button>`;
+            }
+            
+            // Next page button
+            if (ZPOSAdmin.pos.currentPage < data.total_pages) {
+                paginationHtml += `<button class="pagination-btn next-page" data-page="${ZPOSAdmin.pos.currentPage + 1}">${zpos_admin.text.next || 'Next'} &rsaquo;</button>`;
+            }
+            
+            paginationHtml += '</div>';
+            
+            $pagination.html(paginationHtml);
+            
+            // Bind pagination click events
+            $pagination.find('.pagination-btn').on('click', function(e) {
+                e.preventDefault();
+                const page = parseInt($(this).data('page'));
+                if (page && page !== ZPOSAdmin.pos.currentPage) {
+                    ZPOSAdmin.pos.currentPage = page;
+                    ZPOSAdmin.searchProducts();
+                }
+            });
+        },
+
+        /**
+         * Search customers via AJAX
+         * @param {string} query - The search query
+         */
+        searchCustomers: function(query) {
+            if (!query || query.length < 2) {
+                $('#customer-results').hide();
+                return;
+            }
+            
+            $.ajax({
+                url: zpos_admin.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'zpos_search_customers',
+                    search: query, // Backend expects 'search' parameter, not 'query'
+                    limit: 10,
+                    nonce: zpos_admin.nonce
+                },
+                success: function(response) {
+                    if (response.success && response.data) {
+                        ZPOSAdmin.displayCustomerResults(response.data);
+                    } else {
+                        $('#customer-results').hide();
+                    }
+                },
+                error: function() {
+                    $('#customer-results').hide();
+                }
+            });
+        },
+
+        /**
+         * Display customer search results
+         * @param {Array} customers - Array of customer objects
+         */
+        displayCustomerResults: function(customers) {
+            const $results = $('#customer-results');
+            
+            if (!customers || customers.length === 0) {
+                $results.hide();
+                return;
+            }
+            
+            let html = '<ul class="customer-list">';
+            customers.forEach(function(customer) {
+                html += `
+                    <li class="customer-item" data-customer-id="${customer.id}">
+                        <div class="customer-info">
+                            <strong>${customer.name}</strong>
+                            <span class="customer-email">${customer.email}</span>
+                            ${customer.phone ? `<span class="customer-phone">${customer.phone}</span>` : ''}
+                        </div>
+                    </li>
+                `;
+            });
+            html += '</ul>';
+            
+            $results.html(html).show();
+            
+            // Bind customer selection events
+            $results.find('.customer-item').on('click', function() {
+                const customerId = $(this).data('customer-id');
+                const customerName = $(this).find('strong').text();
+                
+                ZPOSAdmin.selectCustomer(customerId, customerName);
+                $results.hide();
+                $('#customer-search').val(customerName);
+            });
+        },
+
+        /**
+         * Select a customer for the current transaction
+         * @param {number} customerId - Customer ID
+         * @param {string} customerName - Customer name
+         */
+        selectCustomer: function(customerId, customerName) {
+            ZPOSAdmin.pos.selectedCustomer = {
+                id: customerId,
+                name: customerName
+            };
+            
+            // Update UI to show selected customer
+            $('#selected-customer').text(customerName).show();
+            $('#customer-search').val('');
+        },
+
         addToCart: function(productId) {
             $.ajax({
-                url: zpos_admin_vars.ajax_url,
+                url: zpos_admin.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'zpos_get_product_details',
                     product_id: productId,
-                    nonce: zpos_admin_vars.nonce
+                    nonce: zpos_admin.nonce
                 },
                 success: function(response) {
                     if (response.success) {
@@ -861,7 +1013,7 @@
             let html = '';
             
             if (ZPOSAdmin.pos.cart.length === 0) {
-                html = '<div class="empty-cart"><p>' + zpos_admin_vars.text.empty_cart + '</p></div>';
+                html = '<div class="empty-cart"><p>' + zpos_admin.text.empty_cart + '</p></div>';
             } else {
                 ZPOSAdmin.pos.cart.forEach(function(item, index) {
                     html += `
@@ -903,7 +1055,7 @@
             }
             
             $.ajax({
-                url: zpos_admin_vars.ajax_url,
+                url: zpos_admin.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'zpos_calculate_cart',
@@ -911,7 +1063,7 @@
                     discount_type: ZPOSAdmin.pos.discount.type,
                     discount_value: ZPOSAdmin.pos.discount.value,
                     tax_rate: $('#tax-rate').val() || 0,
-                    nonce: zpos_admin_vars.nonce
+                    nonce: zpos_admin.nonce
                 },
                 success: function(response) {
                     if (response.success) {
@@ -933,7 +1085,7 @@
 
         processCheckout: function() {
             if (ZPOSAdmin.pos.cart.length === 0) {
-                alert(zpos_admin_vars.text.empty_cart);
+                alert(zpos_admin.text.empty_cart);
                 return;
             }
             
@@ -944,7 +1096,7 @@
             }
             
             $.ajax({
-                url: zpos_admin_vars.ajax_url,
+                url: zpos_admin.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'zpos_create_order',
@@ -955,7 +1107,7 @@
                     discount_value: ZPOSAdmin.pos.discount.value,
                     tax_rate: $('#tax-rate').val() || 0,
                     notes: $('#order-notes').val(),
-                    nonce: zpos_admin_vars.nonce
+                    nonce: zpos_admin.nonce
                 },
                 beforeSend: function() {
                     $('#checkout-btn').prop('disabled', true).text('Processing...');
@@ -997,12 +1149,12 @@
 
         showReceipt: function(orderId) {
             $.ajax({
-                url: zpos_admin_vars.ajax_url,
+                url: zpos_admin.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'zpos_get_receipt',
                     order_id: orderId,
-                    nonce: zpos_admin_vars.nonce
+                    nonce: zpos_admin.nonce
                 },
                 success: function(response) {
                     if (response.success) {
@@ -1217,11 +1369,11 @@
             $('#orders-tbody').empty();
             $('#no-orders').hide();
             
-            $.ajax({                url: zpos_admin_vars.ajax_url,
+            $.ajax({                url: zpos_admin.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'zpos_get_orders',
-                    nonce: zpos_admin_vars.nonce,
+                    nonce: zpos_admin.nonce,
                     page: self.orders.currentPage,
                     per_page: 20,
                     ...self.orders.currentFilters
@@ -1378,11 +1530,11 @@
             }
             
             if (confirm(`Are you sure you want to update ${this.orders.selectedOrders.length} orders to ${newStatus}?`)) {                $.ajax({
-                    url: zpos_admin_vars.ajax_url,
+                    url: zpos_admin.ajax_url,
                     type: 'POST',
                     data: {
                         action: 'zpos_bulk_update_order_status',
-                        nonce: zpos_admin_vars.nonce,
+                        nonce: zpos_admin.nonce,
                         order_ids: this.orders.selectedOrders,
                         status: newStatus
                     },
@@ -1407,11 +1559,11 @@
         showOrderDetails: function(orderId) {
             const self = this;
               $.ajax({
-                url: zpos_admin_vars.ajax_url,
+                url: zpos_admin.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'zpos_get_order_details',
-                    nonce: zpos_admin_vars.nonce,
+                    nonce: zpos_admin.nonce,
                     order_id: orderId
                 },
                 success: function(response) {
@@ -1434,11 +1586,11 @@
         updateOrderStatus: function(orderId, newStatus) {
             const self = this;
               $.ajax({
-                url: zpos_admin_vars.ajax_url,
+                url: zpos_admin.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'zpos_update_order_status',
-                    nonce: zpos_admin_vars.nonce,
+                    nonce: zpos_admin.nonce,
                     order_id: orderId,
                     status: newStatus
                 },
@@ -1462,11 +1614,11 @@
          */
         exportOrders: function() {            const params = new URLSearchParams({
                 action: 'zpos_export_orders',
-                nonce: zpos_admin_vars.nonce,
+                nonce: zpos_admin.nonce,
                 ...this.orders.currentFilters
             });
             
-            window.open(zpos_admin_vars.ajax_url + '?' + params.toString());
+            window.open(zpos_admin.ajax_url + '?' + params.toString());
         },
 
         /**
@@ -1702,11 +1854,11 @@
             }
             
             $.ajax({
-                url: zpos_admin_vars.ajax_url,
+                url: zpos_admin.ajax_url,
                 type: 'POST',
                 data: {
                     action: ajaxAction,
-                    nonce: zpos_admin_vars.nonce,
+                    nonce: zpos_admin.nonce,
                     period: period,
                     start_date: startDate,
                     end_date: endDate
@@ -1865,13 +2017,13 @@
             
             const params = new URLSearchParams({
                 action: 'zpos_export_report',
-                nonce: zpos_admin_vars.nonce,
+                nonce: zpos_admin.nonce,
                 report_type: this.reports.currentReport,
                 format: format,
                 data: JSON.stringify(this.reports.reportData)
             });
             
-            window.open(zpos_admin_vars.ajax_url + '?' + params.toString());
+            window.open(zpos_admin.ajax_url + '?' + params.toString());
         },
 
         /**
@@ -2098,11 +2250,11 @@
             $('#save-settings').prop('disabled', true).text('Saving...');
             
             $.ajax({
-                url: zpos_admin_vars.ajax_url,
+                url: zpos_admin.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'zpos_save_settings',
-                    nonce: zpos_admin_vars.nonce,
+                    nonce: zpos_admin.nonce,
                     settings: formData
                 },
                 success: function(response) {
@@ -2132,11 +2284,11 @@
             $('#reset-settings').prop('disabled', true).text('Resetting...');
             
             $.ajax({
-                url: zpos_admin_vars.ajax_url,
+                url: zpos_admin.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'zpos_reset_settings',
-                    nonce: zpos_admin_vars.nonce
+                    nonce: zpos_admin.nonce
                 },
                 success: function(response) {
                     $('#reset-settings').prop('disabled', false).text('Reset to Defaults');
@@ -2166,11 +2318,11 @@
             $('#test-woocommerce').prop('disabled', true).text('Testing...');
             
             $.ajax({
-                url: zpos_admin_vars.ajax_url,
+                url: zpos_admin.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'zpos_test_woocommerce',
-                    nonce: zpos_admin_vars.nonce
+                    nonce: zpos_admin.nonce
                 },
                 success: function(response) {
                     $('#test-woocommerce').prop('disabled', false).text('Test Connection');
@@ -2200,11 +2352,11 @@
             $('#sync-woocommerce').prop('disabled', true).text('Syncing...');
             
             $.ajax({
-                url: zpos_admin_vars.ajax_url,
+                url: zpos_admin.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'zpos_sync_woocommerce',
-                    nonce: zpos_admin_vars.nonce
+                    nonce: zpos_admin.nonce
                 },
                 success: function(response) {
                     $('#sync-woocommerce').prop('disabled', false).text('Sync Data');
@@ -2231,11 +2383,11 @@
          */
         rerunSetupWizard: function() {
             $.ajax({
-                url: zpos_admin_vars.ajax_url,
+                url: zpos_admin.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'zpos_rerun_wizard',
-                    nonce: zpos_admin_vars.nonce
+                    nonce: zpos_admin.nonce
                 },
                 success: function(response) {
                     if (response.success && response.data.redirect_url) {
@@ -2319,6 +2471,9 @@
          */
         showFieldError: function($field, message) {
             $field.closest('.form-field').addClass('error');
+
+
+
             $field.after('<div class="field-error">' + message + '</div>');
         },
 
@@ -2338,8 +2493,8 @@
     'use strict';
     
     // Safety check for required variables
-    if (typeof zpos_admin_vars === 'undefined') {
-        console.error('ZPOS: zpos_admin_vars is not defined. AJAX functionality may not work.');
+    if (typeof zpos_admin === 'undefined') {
+        console.error('ZPOS: zpos_admin is not defined. AJAX functionality may not work.');
         return;
     }
     

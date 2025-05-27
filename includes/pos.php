@@ -76,15 +76,21 @@ class ZPOS_POS {
             $where .= " AND category_id = %d";
             $params[] = $category;
         }
-        
-        $sql = "SELECT id, name, sku, barcode, price, sale_price, stock_quantity, manage_stock, image_url 
+          $sql = "SELECT id, name, sku, barcode, price, sale_price, stock_quantity, manage_stock, image_url 
                 FROM {$table_products} 
                 {$where} 
                 ORDER BY name ASC 
-                LIMIT %d OFFSET %d";        $params[] = $limit;
+                LIMIT %d OFFSET %d";
+        $params[] = $limit;
         $params[] = $offset;
         
         $products = $wpdb->get_results($wpdb->prepare($sql, $params));
+        
+        // Get total count for pagination
+        $count_sql = "SELECT COUNT(*) FROM {$table_products} {$where}";
+        $count_params = array_slice($params, 0, -2); // Remove limit and offset
+        $total_products = $wpdb->get_var($wpdb->prepare($count_sql, $count_params));
+        $total_pages = ceil($total_products / $limit);
         
         // Check for database errors
         if ($wpdb->last_error) {
@@ -113,10 +119,12 @@ class ZPOS_POS {
                 );
             }
         }
-        
-        wp_send_json_success(array(
+          wp_send_json_success(array(
             'products' => $formatted_products,
-            'total' => count($formatted_products),
+            'total' => intval($total_products),
+            'total_pages' => intval($total_pages),
+            'current_page' => $page,
+            'per_page' => $limit,
             'search' => $search,
             'category' => $category,
             'page' => $page

@@ -1,0 +1,637 @@
+/*!
+ * ZPOS Frontend Styles
+ * Frontend warranty check and customer-facing interface styles
+ */
+
+/* ============================================================================
+   WARRANTY CHECK COMPONENT
+   ============================================================================ */
+
+.zpos-warranty-check-wrapper {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.zpos-warranty-check-container {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Header Section */
+.zpos-warranty-header {
+    background: linear-gradient(135deg, #0073aa 0%, #005a87 100%);
+    color: #fff;
+    padding: 40px 30px;
+    text-align: center;
+}
+
+.zpos-warranty-header .zpos-title {
+    margin: 0 0 10px 0;
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.zpos-warranty-header .zpos-description {
+    margin: 0;
+    font-size: 16px;
+    opacity: 0.9;
+    line-height: 1.5;
+}
+
+/* Form Section */
+.zpos-warranty-form-section {
+    padding: 40px 30px;
+}
+
+.zpos-form-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 30px;
+    align-items: start;
+    margin-bottom: 30px;
+}
+
+.zpos-input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.zpos-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #1e1e1e;
+    font-size: 14px;
+}
+
+.zpos-label .dashicons {
+    color: #0073aa;
+    font-size: 16px;
+}
+
+.zpos-input {
+    padding: 12px 16px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: all 0.2s ease;
+    background: #fff;
+}
+
+.zpos-input:focus {
+    outline: none;
+    border-color: #0073aa;
+    box-shadow: 0 0 0 3px rgba(0, 115, 170, 0.1);
+}
+
+.zpos-help-text {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #666;
+    font-style: italic;
+}
+
+/* Separator */
+.zpos-separator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 0;
+    position: relative;
+}
+
+.zpos-separator-text {
+    background: #fff;
+    padding: 8px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    z-index: 2;
+    position: relative;
+}
+
+.zpos-separator-line {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #e0e0e0;
+    z-index: 1;
+}
+
+/* Form Actions */
+.zpos-form-actions {
+    text-align: center;
+}
+
+.zpos-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.zpos-btn-primary {
+    background: linear-gradient(135deg, #0073aa 0%, #005a87 100%);
+    color: #fff;
+}
+
+.zpos-btn-primary:hover {
+    background: linear-gradient(135deg, #005a87 0%, #004766 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 115, 170, 0.3);
+}
+
+.zpos-btn-secondary {
+    background: #f1f1f1;
+    color: #333;
+    border: 1px solid #ddd;
+}
+
+.zpos-btn-secondary:hover {
+    background: #e0e0e0;
+    border-color: #ccc;
+}
+
+.zpos-btn-large {
+    padding: 16px 32px;
+    font-size: 18px;
+}
+
+.zpos-btn-small {
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.zpos-btn .zpos-spinner {
+    display: none;
+}
+
+.zpos-btn.loading .zpos-btn-text {
+    opacity: 0.7;
+}
+
+.zpos-btn.loading .zpos-spinner {
+    display: inline-block;
+}
+
+.zpos-spinner-icon {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid #fff;
+    border-radius: 50%;
+    animation: zpos-spin 1s linear infinite;
+}
+
+@keyframes zpos-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Results Section */
+.zpos-warranty-results {
+    margin-top: 30px;
+    padding: 30px;
+    background: #f9f9f9;
+    border-radius: 8px;
+}
+
+.zpos-results-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.zpos-results-header h3 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0 0 10px 0;
+    color: #2c5f41;
+    font-size: 24px;
+}
+
+.zpos-results-header .dashicons {
+    color: #46b450;
+    font-size: 28px;
+}
+
+.zpos-results-count {
+    margin: 0;
+    color: #666;
+    font-size: 16px;
+}
+
+/* Warranty Cards */
+.zpos-warranties-list {
+    display: grid;
+    gap: 20px;
+}
+
+.zpos-warranty-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.zpos-warranty-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.zpos-warranty-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 20px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.zpos-product-info h4 {
+    margin: 0 0 8px 0;
+    font-size: 20px;
+    color: #1e1e1e;
+}
+
+.zpos-product-sku,
+.zpos-serial-number {
+    display: inline-block;
+    background: #f0f0f0;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #666;
+    margin-right: 8px;
+    margin-bottom: 4px;
+}
+
+.zpos-warranty-status {
+    text-align: right;
+}
+
+.zpos-status-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.zpos-status-active .zpos-status-badge {
+    background: #46b450;
+    color: #fff;
+}
+
+.zpos-status-expired .zpos-status-badge {
+    background: #dc3232;
+    color: #fff;
+}
+
+.zpos-status-cancelled .zpos-status-badge {
+    background: #ffb900;
+    color: #fff;
+}
+
+/* Warranty Details */
+.zpos-warranty-details {
+    padding: 20px;
+}
+
+.zpos-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.zpos-detail-row:last-child {
+    border-bottom: none;
+}
+
+.zpos-detail-label {
+    font-weight: 600;
+    color: #666;
+    font-size: 14px;
+}
+
+.zpos-detail-value {
+    font-size: 14px;
+    color: #1e1e1e;
+}
+
+.zpos-days-remaining .zpos-detail-value {
+    font-weight: 600;
+    color: #46b450;
+}
+
+.zpos-highlight {
+    background: #e7f5e7;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+/* Warranty Actions */
+.zpos-warranty-actions {
+    padding: 20px;
+    border-top: 1px solid #f0f0f0;
+    text-align: center;
+}
+
+/* No Results */
+.zpos-no-results {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.zpos-no-results-icon {
+    margin-bottom: 20px;
+}
+
+.zpos-no-results-icon .dashicons {
+    font-size: 48px;
+    color: #ccc;
+}
+
+.zpos-no-results h3 {
+    margin: 0 0 15px 0;
+    color: #666;
+    font-size: 24px;
+}
+
+.zpos-no-results p {
+    margin: 0 0 30px 0;
+    color: #666;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.zpos-suggestions {
+    margin: 30px 0;
+    text-align: left;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.zpos-suggestions h4 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 16px;
+}
+
+.zpos-suggestions ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.zpos-suggestions li {
+    padding: 8px 0;
+    padding-left: 20px;
+    position: relative;
+    color: #666;
+    font-size: 14px;
+}
+
+.zpos-suggestions li:before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #0073aa;
+    font-weight: bold;
+}
+
+.zpos-contact-support {
+    margin-top: 30px;
+}
+
+.zpos-contact-support p {
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+/* Help Section */
+.zpos-warranty-help {
+    padding: 30px;
+    background: #f5f5f5;
+    border-top: 1px solid #e0e0e0;
+}
+
+.zpos-warranty-help h4 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 18px;
+}
+
+.zpos-warranty-help ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.zpos-warranty-help li {
+    padding: 8px 0;
+    padding-left: 25px;
+    position: relative;
+    color: #666;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.zpos-warranty-help li:before {
+    content: "💡";
+    position: absolute;
+    left: 0;
+    top: 8px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .zpos-warranty-check-wrapper {
+        padding: 10px;
+    }
+    
+    .zpos-warranty-header {
+        padding: 30px 20px;
+    }
+    
+    .zpos-warranty-header .zpos-title {
+        font-size: 24px;
+    }
+    
+    .zpos-warranty-header .zpos-description {
+        font-size: 14px;
+    }
+    
+    .zpos-warranty-form-section,
+    .zpos-warranty-results,
+    .zpos-warranty-help {
+        padding: 20px;
+    }
+    
+    .zpos-form-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .zpos-separator {
+        order: -1;
+        grid-column: 1;
+        padding: 10px 0;
+    }
+    
+    .zpos-separator-line {
+        display: none;
+    }
+    
+    .zpos-warranty-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+    }
+    
+    .zpos-detail-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .zpos-btn-large {
+        padding: 14px 24px;
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .zpos-warranty-header .zpos-title {
+        font-size: 20px;
+    }
+    
+    .zpos-warranty-header .zpos-description {
+        font-size: 13px;
+    }
+    
+    .zpos-warranty-form-section,
+    .zpos-warranty-results,
+    .zpos-warranty-help {
+        padding: 15px;
+    }
+    
+    .zpos-input {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+}
+
+/* Animation for results */
+.zpos-warranty-results {
+    animation: zpos-fadeIn 0.3s ease-in-out;
+}
+
+@keyframes zpos-fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Loading state */
+.zpos-warranty-form.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* Error states */
+.zpos-input.error {
+    border-color: #dc3232;
+    box-shadow: 0 0 0 3px rgba(220, 50, 50, 0.1);
+}
+
+.zpos-error-message {
+    margin-top: 8px;
+    color: #dc3232;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.zpos-error-message .dashicons {
+    font-size: 16px;
+}
+
+/* Success states */
+.zpos-input.success {
+    border-color: #46b450;
+    box-shadow: 0 0 0 3px rgba(70, 180, 80, 0.1);
+}
+
+/* Accessibility */
+.zpos-btn:focus,
+.zpos-input:focus {
+    outline: 2px solid #0073aa;
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .zpos-warranty-header {
+        background: #000;
+        color: #fff;
+    }
+    
+    .zpos-btn-primary {
+        background: #000;
+        border: 2px solid #fff;
+    }
+    
+    .zpos-input {
+        border-width: 2px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .zpos-warranty-card,
+    .zpos-btn,
+    .zpos-input {
+        transition: none;
+    }
+    
+    .zpos-spinner-icon {
+        animation: none;
+    }
+    
+    .zpos-warranty-results {
+        animation: none;
+    }
+}

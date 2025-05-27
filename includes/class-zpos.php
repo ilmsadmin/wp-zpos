@@ -196,19 +196,21 @@ class ZPOS {
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/admin-menus-clean.php';
         $admin_menus = new ZPOS_Admin_Menus();
 
+        // Remove these lines if they exist - they're causing the error
+        // $this->loader->add_action('wp_ajax_zpos_get_customers_list', $this->admin_menus, 'ajax_get_customers_list');
+        // $this->loader->add_action('wp_ajax_zpos_get_products_list', $this->admin_menus, 'ajax_get_products_list');
+        
         // Initialize reports system
         $reports = new ZPOS_Reports();
 
         // Initialize settings system
-        $settings = new ZPOS_Settings();
-
-        // Initialize setup wizard if not completed
+        $settings = new ZPOS_Settings();        // Initialize setup wizard if not completed
         if (!get_option('zpos_setup_completed', false)) {
             $setup_wizard = new ZPOS_Setup_Wizard();
         }
 
         // Initialize database
-        $database = new ZPOS_Database();
+        ZPOS_Database::init();
     }
 
     /**

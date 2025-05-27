@@ -27,8 +27,7 @@ class ZPOS_Activator {
      * Long Description.
      *
      * @since    1.0.0
-     */
-    public static function activate() {
+     */    public static function activate() {
         // Create database tables
         self::create_tables();
         
@@ -37,6 +36,12 @@ class ZPOS_Activator {
         
         // Set default options
         self::set_default_options();
+        
+        // Add name column to customers table if it doesn't exist
+        self::add_name_column_to_customers_table();
+        
+        // Add package_id column to warranties table if it doesn't exist
+        self::add_package_id_column_to_warranties_table();
         
         // Set plugin version
         update_option('zpos_version', ZPOS_VERSION);
@@ -115,14 +120,13 @@ class ZPOS_Activator {
             KEY idx_parent (parent_id),
             KEY idx_status (status),
             KEY idx_sort_order (sort_order)
-        ) $charset_collate;";
-
-        // Customers table
+        ) $charset_collate;";        // Customers table
         $table_customers = $wpdb->prefix . 'zpos_customers';
         $sql_customers = "CREATE TABLE $table_customers (
             id int(11) NOT NULL AUTO_INCREMENT,
             first_name varchar(100) NOT NULL,
             last_name varchar(100) NOT NULL,
+            name varchar(255),
             email varchar(100),
             phone varchar(20),
             address text,
@@ -257,6 +261,7 @@ class ZPOS_Activator {
             customer_id int(11) NOT NULL,
             order_id int(11),
             warranty_package_id int(11) NOT NULL,
+            package_id int(11) NOT NULL,
             serial_number varchar(100) NOT NULL,
             purchase_date date NOT NULL,
             warranty_start_date date NOT NULL,
@@ -271,6 +276,7 @@ class ZPOS_Activator {
             KEY idx_customer (customer_id),
             KEY idx_order (order_id),
             KEY idx_warranty_package (warranty_package_id),
+            KEY idx_package (package_id),
             KEY idx_status (status),
             KEY idx_warranty_dates (warranty_start_date, warranty_end_date)
         ) $charset_collate;";
@@ -507,14 +513,30 @@ class ZPOS_Activator {
                     $wpdb->update($categories_table, array('slug' => $slug), array('id' => $category->id));
                 }
             }
-        }
-
-        // Add missing columns to customers table
+        }        // Add missing columns to customers table
         $customers_table = $wpdb->prefix . 'zpos_customers';
         if ($wpdb->get_var("SHOW TABLES LIKE '$customers_table'")) {
             $columns = $wpdb->get_col("DESCRIBE $customers_table");
             if (!in_array('customer_group', $columns)) {
                 $wpdb->query("ALTER TABLE $customers_table ADD COLUMN customer_group varchar(50) DEFAULT 'general' AFTER country");
+            }
+            if (!in_array('name', $columns)) {
+                $wpdb->query("ALTER TABLE $customers_table ADD COLUMN name varchar(255) AFTER last_name");
+                $wpdb->query("UPDATE $customers_table SET name = CONCAT(first_name, ' ', last_name) WHERE name IS NULL OR name = ''");
+            }
+        }
+          // Add missing columns to warranties table
+        $warranties_table = $wpdb->prefix . 'zpos_warranties';
+        if ($wpdb->get_var("SHOW TABLES LIKE '$warranties_table'")) {
+            $columns = $wpdb->get_col("DESCRIBE $warranties_table");
+            if (!in_array('package_id', $columns)) {
+                $wpdb->query("ALTER TABLE $warranties_table ADD COLUMN package_id int(11) NOT NULL DEFAULT 0 AFTER warranty_package_id");
+                $wpdb->query("UPDATE $warranties_table SET package_id = warranty_package_id");
+                $wpdb->query("ALTER TABLE $warranties_table ADD KEY idx_package (package_id)");
+                error_log("ZPOS Migration: Added 'package_id' column to warranties table");
+            } else {
+                // Make sure all warranties have package_id set correctly
+                $wpdb->query("UPDATE $warranties_table SET package_id = warranty_package_id WHERE package_id = 0 OR package_id IS NULL");
             }
         }
         
@@ -747,6 +769,61 @@ class ZPOS_Activator {
                 wp_safe_redirect(admin_url('admin.php?page=zpos-setup'));
                 exit;
             }
+        }
+    }
+    
+    /**
+     * Add the name column to the customers table if it doesn't exist.
+     *
+     * @since    1.0.0
+     */
+    private static function add_name_column_to_customers_table() {
+        global $wpdb;
+        
+        $customers_table = $wpdb->prefix . 'zpos_customers';
+        
+        if ($wpdb->get_var("SHOW TABLES LIKE '$customers_table'")) {
+            $columns = $wpdb->get_col("DESCRIBE $customers_table");
+            
+            // Add name column if it doesn't exist
+            if (!in_array('name', $columns)) {
+                $wpdb->query("ALTER TABLE $customers_table ADD COLUMN name varchar(255) AFTER last_name");
+                
+                // Update existing customers to set name as first_name + last_name
+                $wpdb->query("UPDATE $customers_table SET name = CONCAT(first_name, ' ', last_name) WHERE name IS NULL OR name = ''");
+                
+                error_log("ZPOS Migration: Added 'name' column to customers table");
+            }
+        }
+    }
+      /**
+     * Add the package_id column to the warranties table if it doesn't exist.
+     *
+     * @since    1.0.0
+     */
+    private static function add_package_id_column_to_warranties_table() {
+        global $wpdb;
+        
+        $warranties_table = $wpdb->prefix . 'zpos_warranties';
+        
+        if ($wpdb->get_var("SHOW TABLES LIKE '$warranties_table'")) {
+            $columns = $wpdb->get_col("DESCRIBE $warranties_table");
+            
+            // Add package_id column if it doesn't exist
+            if (!in_array('package_id', $columns)) {
+                $wpdb->query("ALTER TABLE $warranties_table ADD COLUMN package_id int(11) NOT NULL DEFAULT 0 AFTER warranty_package_id");
+                
+                // Update existing warranties to set package_id = warranty_package_id
+                $wpdb->query("UPDATE $warranties_table SET package_id = warranty_package_id");
+                
+                // Add index for package_id column
+                $wpdb->query("ALTER TABLE $warranties_table ADD KEY idx_package (package_id)");
+                
+                error_log("ZPOS Migration: Added 'package_id' column to warranties table");
+            }
+            
+            // Ensure all existing warranties have package_id set correctly
+            $wpdb->query("UPDATE $warranties_table SET package_id = warranty_package_id WHERE package_id = 0 OR package_id IS NULL");
         }
     }
 }

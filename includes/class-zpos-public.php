@@ -37,9 +37,7 @@ class ZPOS_Public {
      * @access   private
      * @var      string    $version    The current version of this plugin.
      */
-    private $version;
-
-    /**
+    private $version;    /**
      * Initialize the class and set its properties.
      *
      * @since    1.0.0
@@ -49,6 +47,9 @@ class ZPOS_Public {
     public function __construct($plugin_name, $version) {
         $this->plugin_name = $plugin_name;
         $this->version = $version;
+
+        // Load frontend warranty functionality
+        $this->load_frontend_warranty();
     }
 
     /**
@@ -112,12 +113,20 @@ class ZPOS_Public {
         ), $atts, 'zpos_warranty_check');
 
         // Start output buffering
-        ob_start();
-
-        // Include the frontend warranty template
+        ob_start();        // Include the frontend warranty template
         include ZPOS_PLUGIN_DIR . 'templates/frontend/warranty-check.php';
 
         // Return the output
         return ob_get_clean();
+    }
+
+    /**
+     * Load frontend warranty functionality.
+     *
+     * @since    1.0.0
+     * @access   private
+     */
+    private function load_frontend_warranty() {
+        require_once ZPOS_PLUGIN_DIR . 'includes/frontend-warranty.php';
     }
 }

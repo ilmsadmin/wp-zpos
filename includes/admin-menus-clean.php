@@ -187,35 +187,36 @@ class ZPOS_Admin_Menus {
             array(),
             '3.9.1',
             true
-        );
-
-        // Enqueue admin CSS
+        );        // Enqueue admin CSS
         wp_enqueue_style(
             'zpos-admin',
             plugin_dir_url(__FILE__) . '../assets/css/admin.css',
             array(),
             '1.0.0'
-        );
-
-        // Enqueue admin JS
+        );        // Enqueue admin JS with timestamp to force browser refresh
         wp_enqueue_script(
             'zpos-admin',
             plugin_dir_url(__FILE__) . '../assets/js/admin.js',
             array('jquery', 'chartjs'),
-            '1.0.0',
+            '1.0.0.' . time(), // Adding timestamp to force cache refresh
             true
-        );        // Localize script with AJAX data
-        wp_localize_script('zpos-admin', 'zpos_admin_vars', array(
+        );
+          // Localize script with AJAX data
+        wp_localize_script('zpos-admin', 'zpos_admin', array(
             'ajax_url' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('zpos_admin_nonce'),
-            'text' => array(
+            'nonce' => wp_create_nonce('zpos_admin_nonce'),            'text' => array(
                 'loading' => __('Loading...', 'zpos'),
                 'error' => __('An error occurred. Please try again.', 'zpos'),
                 'success' => __('Success!', 'zpos'),
                 'confirm_delete' => __('Are you sure you want to delete this item?', 'zpos'),
                 'no_data' => __('No data available', 'zpos'),
                 'all_categories' => __('All Categories', 'zpos'),
-                'no_products' => __('No products found', 'zpos')
+                'no_products' => __('No products found', 'zpos'),
+                'empty_cart' => __('Your cart is empty', 'zpos'),
+                'items' => __('items', 'zpos'),
+                'previous' => __('Previous', 'zpos'),
+                'next' => __('Next', 'zpos'),
+                'no_customers' => __('No customers found', 'zpos')
             )
         ));
     }
@@ -600,11 +601,15 @@ class ZPOS_Admin_Menus {
         add_action('wp_ajax_zpos_get_category', array($this, 'ajax_get_category'));
         add_action('wp_ajax_zpos_bulk_category_action', array($this, 'ajax_bulk_category_action'));
         add_action('wp_ajax_zpos_get_category_product_count', array($this, 'ajax_get_category_product_count'));
-        
-        // Reports AJAX handlers
+          // Reports AJAX handlers
         add_action('wp_ajax_zpos_generate_report', array($this, 'ajax_generate_report'));
         add_action('wp_ajax_zpos_export_report', array($this, 'ajax_export_report'));
-          // Settings AJAX handlers
+        
+        // Customer and Product list handlers for warranty form
+        add_action('wp_ajax_zpos_get_customers_list', array($this, 'ajax_get_customers_list'));
+        add_action('wp_ajax_zpos_get_products_list', array($this, 'ajax_get_products_list'));
+        
+        // Settings AJAX handlers
         add_action('wp_ajax_zpos_save_settings', array($this, 'ajax_save_settings'));
         add_action('wp_ajax_zpos_reset_settings', array($this, 'ajax_reset_settings'));
           // POS AJAX handlers - Initialize POS class and delegate to it
@@ -1030,6 +1035,149 @@ class ZPOS_Admin_Menus {
                 // Set transient so notice only shows once
                 set_transient('zpos_integration_notice_shown', true, DAY_IN_SECONDS);
             }
+        }
+    }
+
+    /**
+     * AJAX handler for getting customers list
+     *
+     * @since    1.0.0
+     */
+    public function ajax_get_customers_list() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'zpos'));
+        }
+
+        try {
+            $customers = array();
+
+            // Try to get WooCommerce customers first
+            if (class_exists('WooCommerce')) {
+                $customer_query = new WP_User_Query(array(
+                    'role' => 'customer',
+                    'number' => 100,
+                    'orderby' => 'display_name',
+                    'order' => 'ASC'
+                ));
+
+                foreach ($customer_query->get_results() as $user) {
+                    $customers[] = array(
+                        'id' => $user->ID,
+                        'name' => $user->display_name . ' (' . $user->user_email . ')'
+                    );
+                }
+            }
+
+            // If no WooCommerce customers, get from ZPOS customers table
+            if (empty($customers)) {
+                global $wpdb;
+                $table_name = $wpdb->prefix . 'zpos_customers';
+                
+                $results = $wpdb->get_results("
+                    SELECT id, CONCAT(name, ' (', email, ')') as full_name 
+                    FROM {$table_name} 
+                    WHERE status = 'active' 
+                    ORDER BY name ASC
+                    LIMIT 100
+                ");
+                
+                foreach ($results as $customer) {
+                    $customers[] = array(
+                        'id' => $customer->id,
+                        'name' => $customer->full_name
+                    );
+                }
+            }
+
+            wp_send_json_success($customers);
+
+        } catch (Exception $e) {
+            error_log('ZPOS Get Customers Error: ' . $e->getMessage());
+            wp_send_json_error('Failed to load customers: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * AJAX handler for getting products list
+     *
+     * @since    1.0.0
+     */
+    public function ajax_get_products_list() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'zpos'));
+        }
+
+        try {
+            $products = array();
+
+            // Try to get WooCommerce products first
+            if (class_exists('WooCommerce')) {
+                $wc_products = wc_get_products(array(
+                    'status' => 'publish',
+                    'limit' => 100,
+                    'orderby' => 'title',
+                    'order' => 'ASC'
+                ));
+
+                foreach ($wc_products as $product) {
+                    $products[] = array(
+                        'id' => $product->get_id(),
+                        'name' => $product->get_name(),
+                        'sku' => $product->get_sku()
+                    );
+                }
+            }
+
+            // If no WooCommerce products, get from ZPOS products table
+            if (empty($products)) {
+                global $wpdb;
+                $table_name = $wpdb->prefix . 'zpos_products';
+                
+                $results = $wpdb->get_results("
+                    SELECT id, name, sku 
+                    FROM {$table_name} 
+                    WHERE status = 'active' 
+                    ORDER BY name ASC
+                    LIMIT 100
+                ");
+                
+                foreach ($results as $product) {
+                    $products[] = array(
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'sku' => $product->sku
+                    );
+                }
+            }
+
+            // As a fallback, use WordPress posts with post_type 'product'
+            if (empty($products)) {
+                $product_query = new WP_Query(array(
+                    'post_type' => 'product',
+                    'posts_per_page' => 100,
+                    'post_status' => 'publish',
+                    'orderby' => 'title',
+                    'order' => 'ASC'
+                ));
+
+                foreach ($product_query->posts as $product) {
+                    $products[] = array(
+                        'id' => $product->ID,
+                        'name' => $product->post_title,
+                        'sku' => ''
+                    );
+                }
+            }
+
+            wp_send_json_success($products);
+
+        } catch (Exception $e) {
+            error_log('ZPOS Get Products Error: ' . $e->getMessage());
+            wp_send_json_error('Failed to load products: ' . $e->getMessage());
         }
     }
 }

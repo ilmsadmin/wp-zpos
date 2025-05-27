@@ -89,3 +89,11 @@ function run_zpos() {
     $plugin->run();
 }
 run_zpos();
+
+// Include warranty class
+require_once ZPOS_PLUGIN_DIR . 'includes/warranty.php';
+
+// Initialize warranty class to register AJAX handlers
+if (is_admin()) {
+    new ZPOS_Warranty();
+}

@@ -20,11 +20,35 @@ if (!class_exists('ZPOS_Warranty')) {
 }
 
 $warranty_manager = new ZPOS_Warranty();
-$packages = $warranty_manager->get_warranty_packages();
-$recent_warranties = $warranty_manager->get_recent_warranties(10);
 
-// Get basic stats
-$stats = $warranty_manager->get_warranty_stats();
+// Safely get packages with error handling
+try {
+    $packages = $warranty_manager->get_warranty_packages();
+} catch (Exception $e) {
+    $packages = array();
+    error_log('ZPOS Warranty Packages Error: ' . $e->getMessage());
+}
+
+// Safely get recent warranties with error handling
+try {
+    $recent_warranties = $warranty_manager->get_recent_warranties(10);
+} catch (Exception $e) {
+    $recent_warranties = array();
+    error_log('ZPOS Recent Warranties Error: ' . $e->getMessage());
+}
+
+// Get basic stats with error handling
+try {
+    $stats = $warranty_manager->get_warranty_stats();
+} catch (Exception $e) {
+    $stats = array(
+        'total_warranties' => 0,
+        'active_warranties' => 0,
+        'expiring_soon' => 0,
+        'expired_warranties' => 0
+    );
+    error_log('ZPOS Warranty Stats Error: ' . $e->getMessage());
+}
 ?>
 
 <div class="wrap zpos-warranty-page">
@@ -382,6 +406,12 @@ $stats = $warranty_manager->get_warranty_stats();
 
 <script type="text/javascript">
 jQuery(document).ready(function($) {
+    // Check if zpos_admin object exists
+    if (typeof zpos_admin === 'undefined') {
+        console.error('ZPOS Admin object not found. Make sure scripts are properly enqueued.');
+        return;
+    }
+
     // Tab switching
     $('.nav-tab').on('click', function(e) {
         e.preventDefault();
@@ -411,11 +441,21 @@ jQuery(document).ready(function($) {
                 nonce: zpos_admin.nonce,
                 filters: filters
             },
+            beforeSend: function() {
+                $('#warranties-table-body').html('<tr><td colspan="9"><?php _e("Loading...", "zpos"); ?></td></tr>');
+            },
             success: function(response) {
                 if (response.success) {
                     $('#warranties-table-body').html(response.data.html);
                     $('#warranties-pagination').html(response.data.pagination);
+                } else {
+                    console.error('Error loading warranties:', response.data);
+                    $('#warranties-table-body').html('<tr><td colspan="9"><?php _e("Error loading warranties", "zpos"); ?></td></tr>');
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error);
+                $('#warranties-table-body').html('<tr><td colspan="9"><?php _e("Connection error", "zpos"); ?></td></tr>');
             }
         });
     }
@@ -454,52 +494,104 @@ jQuery(document).ready(function($) {
 
     // Save warranty package
     $('#save-package').on('click', function() {
-        var formData = new FormData($('#warranty-package-form')[0]);
-        formData.append('action', 'zpos_save_warranty_package');
-        formData.append('nonce', zpos_admin.nonce);
+        var $button = $(this);
+        var originalText = $button.text();
+        
+        // Validate required fields
+        if (!$('#package-name').val() || !$('#package-duration').val()) {
+            alert('<?php _e("Please fill in all required fields", "zpos"); ?>');
+            return;
+        }
+
+        $button.prop('disabled', true).text('<?php _e("Saving...", "zpos"); ?>');
+
+        var formData = {
+            action: 'zpos_save_warranty_package',
+            nonce: zpos_admin.nonce,
+            package_id: $('#package-id').val(),
+            name: $('#package-name').val(),
+            duration_months: $('#package-duration').val(),
+            price: $('#package-price').val() || 0,
+            description: $('#package-description').val(),
+            status: $('#package-status').val()
+        };
 
         $.ajax({
             url: ajaxurl,
             type: 'POST',
             data: formData,
-            processData: false,
-            contentType: false,
             success: function(response) {
                 if (response.success) {
                     $('#warranty-package-modal').hide();
                     location.reload(); // Refresh to show new package
                 } else {
-                    alert(response.data);
+                    alert(response.data || '<?php _e("Error saving package", "zpos"); ?>');
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error, xhr.responseText);
+                alert('<?php _e("Connection error. Please try again.", "zpos"); ?>');
+            },
+            complete: function() {
+                $button.prop('disabled', false).text(originalText);
             }
         });
     });
 
     // Save warranty
     $('#save-warranty').on('click', function() {
-        var formData = new FormData($('#warranty-form')[0]);
-        formData.append('action', 'zpos_save_warranty');
-        formData.append('nonce', zpos_admin.nonce);
+        var $button = $(this);
+        var originalText = $button.text();
+        
+        // Validate required fields
+        if (!$('#warranty-customer').val() || !$('#warranty-product').val() || !$('#warranty-package').val() || !$('#warranty-purchase-date').val()) {
+            alert('<?php _e("Please fill in all required fields", "zpos"); ?>');
+            return;
+        }
+
+        $button.prop('disabled', true).text('<?php _e("Saving...", "zpos"); ?>');
+
+        var formData = {
+            action: 'zpos_save_warranty',
+            nonce: zpos_admin.nonce,
+            warranty_id: $('#warranty-id').val(),
+            customer_id: $('#warranty-customer').val(),
+            product_id: $('#warranty-product').val(),
+            package_id: $('#warranty-package').val(),
+            serial_number: $('#warranty-serial').val(),
+            purchase_date: $('#warranty-purchase-date').val(),
+            notes: $('#warranty-notes').val()
+        };
 
         $.ajax({
             url: ajaxurl,
             type: 'POST',
             data: formData,
-            processData: false,
-            contentType: false,
             success: function(response) {
                 if (response.success) {
                     $('#warranty-modal').hide();
                     loadWarrantiesTable();
                 } else {
-                    alert(response.data);
+                    alert(response.data || '<?php _e("Error saving warranty", "zpos"); ?>');
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error, xhr.responseText);
+                alert('<?php _e("Connection error. Please try again.", "zpos"); ?>');
+            },
+            complete: function() {
+                $button.prop('disabled', false).text(originalText);
             }
         });
     });
 
     // Generate serial number
     $('#generate-serial').on('click', function() {
+        var $button = $(this);
+        var originalText = $button.text();
+        
+        $button.prop('disabled', true).text('<?php _e("Generating...", "zpos"); ?>');
+
         $.ajax({
             url: ajaxurl,
             type: 'POST',
@@ -510,14 +602,23 @@ jQuery(document).ready(function($) {
             success: function(response) {
                 if (response.success) {
                     $('#warranty-serial').val(response.data);
+                } else {
+                    alert(response.data || '<?php _e("Error generating serial number", "zpos"); ?>');
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error, xhr.responseText);
+                alert('<?php _e("Connection error. Please try again.", "zpos"); ?>');
+            },
+            complete: function() {
+                $button.prop('disabled', false).text(originalText);
             }
         });
     });
 
     // Load customers and products for warranty form
     function loadCustomersAndProducts() {
-        // Load customers
+        // Load customers with better error handling
         $.ajax({
             url: ajaxurl,
             type: 'POST',
@@ -525,18 +626,34 @@ jQuery(document).ready(function($) {
                 action: 'zpos_get_customers_list',
                 nonce: zpos_admin.nonce
             },
+            beforeSend: function() {
+                $('#warranty-customer').html('<option value=""><?php _e("Loading customers...", "zpos"); ?></option>');
+            },
             success: function(response) {
-                if (response.success) {
-                    var options = '<option value=""><?php _e('Select Customer', 'zpos'); ?></option>';
+                if (response.success && response.data) {
+                    var options = '<option value=""><?php _e("Select Customer", "zpos"); ?></option>';
                     $.each(response.data, function(index, customer) {
                         options += '<option value="' + customer.id + '">' + customer.name + '</option>';
                     });
                     $('#warranty-customer').html(options);
+                } else {
+                    console.error('Error loading customers:', response);
+                    loadCustomersFallback();
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error loading customers:', status, error);
+                // Check if it's a 400 error (missing handler)
+                if (xhr.status === 400 || xhr.status === 500) {
+                    console.log('AJAX handler not found, using fallback');
+                    loadCustomersFallback();
+                } else {
+                    $('#warranty-customer').html('<option value=""><?php _e("Error loading customers", "zpos"); ?></option>');
                 }
             }
         });
 
-        // Load products
+        // Load products with better error handling
         $.ajax({
             url: ajaxurl,
             type: 'POST',
@@ -544,16 +661,79 @@ jQuery(document).ready(function($) {
                 action: 'zpos_get_products_list',
                 nonce: zpos_admin.nonce
             },
+            beforeSend: function() {
+                $('#warranty-product').html('<option value=""><?php _e("Loading products...", "zpos"); ?></option>');
+            },
             success: function(response) {
-                if (response.success) {
-                    var options = '<option value=""><?php _e('Select Product', 'zpos'); ?></option>';
+                if (response.success && response.data) {
+                    var options = '<option value=""><?php _e("Select Product", "zpos"); ?></option>';
                     $.each(response.data, function(index, product) {
                         options += '<option value="' + product.id + '">' + product.name + '</option>';
                     });
                     $('#warranty-product').html(options);
+                } else {
+                    console.error('Error loading products:', response);
+                    loadProductsFallback();
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error loading products:', status, error);
+                // Check if it's a 400 error (missing handler)
+                if (xhr.status === 400 || xhr.status === 500) {
+                    console.log('AJAX handler not found, using fallback');
+                    loadProductsFallback();
+                } else {
+                    $('#warranty-product').html('<option value=""><?php _e("Error loading products", "zpos"); ?></option>');
                 }
             }
         });
+    }
+
+    // Enhanced fallback functions
+    function loadCustomersFallback() {
+        var options = '<option value=""><?php _e("Select Customer", "zpos"); ?></option>';
+        
+        // Try to load users directly if we have permission
+        <?php 
+        if (current_user_can('list_users')) {
+            $users = get_users(array(
+                'role__in' => array('customer', 'subscriber'),
+                'number' => 100,
+                'orderby' => 'display_name'
+            ));
+            
+            foreach ($users as $user) {
+                $name = esc_js($user->display_name . ' (' . $user->user_email . ')');
+                echo "options += '<option value=\"{$user->ID}\">{$name}</option>';\n";
+            }
+        }
+        ?>
+        
+        $('#warranty-customer').html(options);
+    }
+
+    function loadProductsFallback() {
+        var options = '<option value=""><?php _e("Select Product", "zpos"); ?></option>';
+        
+        // Load WooCommerce products if available
+        <?php 
+        if (class_exists('WooCommerce')) {
+            $products = get_posts(array(
+                'post_type' => 'product',
+                'posts_per_page' => 100,
+                'post_status' => 'publish',
+                'orderby' => 'title',
+                'order' => 'ASC'
+            ));
+            
+            foreach ($products as $product) {
+                $name = esc_js($product->post_title);
+                echo "options += '<option value=\"{$product->ID}\">{$name}</option>';\n";
+            }
+        }
+        ?>
+        
+        $('#warranty-product').html(options);
     }
 
     // Modal close handlers
@@ -569,16 +749,21 @@ jQuery(document).ready(function($) {
             search: $('#warranty-search').val()
         };
 
-        window.location.href = ajaxurl + '?' + $.param({
+        var params = {
             action: 'zpos_export_warranties',
             nonce: zpos_admin.nonce,
             filters: JSON.stringify(filters)
-        });
+        };
+
+        window.location.href = ajaxurl + '?' + $.param(params);
     });
 
     // Send expiry notifications
     $('#warranty-send-notifications').on('click', function() {
-        $(this).prop('disabled', true).text('<?php _e('Sending...', 'zpos'); ?>');
+        var $button = $(this);
+        var originalText = $button.text();
+        
+        $button.prop('disabled', true).text('<?php _e('Sending...', 'zpos'); ?>');
         
         $.ajax({
             url: ajaxurl,
@@ -591,19 +776,33 @@ jQuery(document).ready(function($) {
                 if (response.success) {
                     alert('<?php _e('Notifications sent successfully!', 'zpos'); ?>');
                 } else {
-                    alert(response.data);
+                    alert(response.data || '<?php _e("Error sending notifications", "zpos"); ?>');
                 }
             },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error, xhr.responseText);
+                alert('<?php _e("Connection error. Please try again.", "zpos"); ?>');
+            },
             complete: function() {
-                $('#warranty-send-notifications').prop('disabled', false).text('<?php _e('Send Expiry Notifications', 'zpos'); ?>');
+                $button.prop('disabled', false).text(originalText);
             }
         });
     });
 
     // Generate warranty report
     $('#generate-warranty-report').on('click', function() {
+        var $button = $(this);
+        var originalText = $button.text();
+        
         var dateFrom = $('#report-date-from').val();
         var dateTo = $('#report-date-to').val();
+
+        if (!dateFrom || !dateTo) {
+            alert('<?php _e("Please select both from and to dates", "zpos"); ?>');
+            return;
+        }
+
+        $button.prop('disabled', true).text('<?php _e("Generating...", "zpos"); ?>');
 
         $.ajax({
             url: ajaxurl,
@@ -617,10 +816,38 @@ jQuery(document).ready(function($) {
             success: function(response) {
                 if (response.success) {
                     $('#warranty-reports-container').html(response.data.html);
+                } else {
+                    alert(response.data || '<?php _e("Error generating report", "zpos"); ?>');
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error, xhr.responseText);
+                alert('<?php _e("Connection error. Please try again.", "zpos"); ?>');
+            },
+            complete: function() {
+                $button.prop('disabled', false).text(originalText);
             }
         });
     });
+
+    // Debug function - can be removed in production
+    window.zposDebugAjax = function(action) {
+        console.log('Testing AJAX action:', action);
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: action,
+                nonce: zpos_admin.nonce
+            },
+            success: function(response) {
+                console.log('Success:', response);
+            },
+            error: function(xhr, status, error) {
+                console.error('Error:', status, error, xhr.responseText);
+            }
+        });
+    };
 });
 </script>
 

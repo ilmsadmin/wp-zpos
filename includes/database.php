@@ -19,16 +19,14 @@
  * @subpackage ZPOS/includes
  * @author     Your Name <your.email@example.com>
  */
-class ZPOS_Database {
-
-    /**
+class ZPOS_Database {    /**
      * Database version for schema management.
      *
      * @since    1.0.0
      * @access   private
      * @var      string    $db_version    Current database version.
      */
-    private static $db_version = '1.0.0';
+    private static $db_version = '1.1.0';
 
     /**
      * Initialize the database.
@@ -37,9 +35,7 @@ class ZPOS_Database {
      */
     public static function init() {
         add_action('plugins_loaded', array(__CLASS__, 'check_version'));
-    }
-
-    /**
+    }    /**
      * Check if database needs updating.
      *
      * @since    1.0.0
@@ -47,9 +43,124 @@ class ZPOS_Database {
     public static function check_version() {
         if (get_option('zpos_db_version') !== self::$db_version) {
             self::create_tables();
+            self::migrate_existing_tables();
             update_option('zpos_db_version', self::$db_version);
         }
-    }    /**
+    }
+
+    /**
+     * Migrate existing tables to new schema.
+     *
+     * @since    1.0.0
+     */
+    public static function migrate_existing_tables() {
+        global $wpdb;
+        
+        $customers_table = $wpdb->prefix . 'zpos_customers';
+        
+        // Check if customers table exists and migrate schema
+        if ($wpdb->get_var("SHOW TABLES LIKE '$customers_table'")) {
+            $columns = $wpdb->get_col("DESCRIBE $customers_table");
+            
+            // Add missing address_line_1 column if it doesn't exist but billing_address_1 does
+            if (!in_array('address_line_1', $columns)) {
+                if (in_array('billing_address_1', $columns)) {
+                    // Rename billing_address_1 to address_line_1
+                    $wpdb->query("ALTER TABLE $customers_table CHANGE COLUMN billing_address_1 address_line_1 varchar(255)");
+                } else {
+                    // Add new column
+                    $wpdb->query("ALTER TABLE $customers_table ADD COLUMN address_line_1 varchar(255) AFTER phone");
+                }
+            }
+            
+            // Add missing address_line_2 column if it doesn't exist but billing_address_2 does
+            if (!in_array('address_line_2', $columns)) {
+                if (in_array('billing_address_2', $columns)) {
+                    // Rename billing_address_2 to address_line_2
+                    $wpdb->query("ALTER TABLE $customers_table CHANGE COLUMN billing_address_2 address_line_2 varchar(255)");
+                } else {
+                    // Add new column
+                    $wpdb->query("ALTER TABLE $customers_table ADD COLUMN address_line_2 varchar(255) AFTER address_line_1");
+                }
+            }
+            
+            // Add missing city column if it doesn't exist but billing_city does
+            if (!in_array('city', $columns)) {
+                if (in_array('billing_city', $columns)) {
+                    $wpdb->query("ALTER TABLE $customers_table CHANGE COLUMN billing_city city varchar(100)");
+                } else {
+                    $wpdb->query("ALTER TABLE $customers_table ADD COLUMN city varchar(100) AFTER address_line_2");
+                }
+            }
+            
+            // Add missing state column if it doesn't exist but billing_state does
+            if (!in_array('state', $columns)) {
+                if (in_array('billing_state', $columns)) {
+                    $wpdb->query("ALTER TABLE $customers_table CHANGE COLUMN billing_state state varchar(100)");
+                } else {
+                    $wpdb->query("ALTER TABLE $customers_table ADD COLUMN state varchar(100) AFTER city");
+                }
+            }
+            
+            // Add missing postal_code column if it doesn't exist but billing_postal_code does
+            if (!in_array('postal_code', $columns)) {
+                if (in_array('billing_postal_code', $columns)) {
+                    $wpdb->query("ALTER TABLE $customers_table CHANGE COLUMN billing_postal_code postal_code varchar(20)");
+                } else {
+                    $wpdb->query("ALTER TABLE $customers_table ADD COLUMN postal_code varchar(20) AFTER state");
+                }
+            }
+            
+            // Add missing country column if it doesn't exist but billing_country does
+            if (!in_array('country', $columns)) {
+                if (in_array('billing_country', $columns)) {
+                    $wpdb->query("ALTER TABLE $customers_table CHANGE COLUMN billing_country country varchar(100) DEFAULT 'VN'");
+                } else {
+                    $wpdb->query("ALTER TABLE $customers_table ADD COLUMN country varchar(100) DEFAULT 'VN' AFTER postal_code");
+                }
+            }
+            
+            // Add missing referral_code column
+            if (!in_array('referral_code', $columns)) {
+                $wpdb->query("ALTER TABLE $customers_table ADD COLUMN referral_code varchar(50) AFTER loyalty_points");
+            }
+            
+            // Add missing columns that might not exist
+            $missing_columns = array(
+                'discount_percent' => 'ADD COLUMN discount_percent decimal(5,2) DEFAULT 0.00 AFTER customer_group',
+                'credit_limit' => 'ADD COLUMN credit_limit decimal(10,2) DEFAULT 0.00 AFTER discount_percent',
+                'orders_count' => 'ADD COLUMN orders_count int(11) DEFAULT 0 AFTER total_spent',
+                'avatar_url' => 'ADD COLUMN avatar_url varchar(500) AFTER last_order_date',
+                'wordpress_user_id' => 'ADD COLUMN wordpress_user_id int(11) DEFAULT NULL AFTER woocommerce_id',
+                'loyalty_points' => 'ADD COLUMN loyalty_points int(11) DEFAULT 0 AFTER wordpress_user_id',
+                'referred_by' => 'ADD COLUMN referred_by int(11) DEFAULT NULL AFTER referral_code',
+                'tags' => 'ADD COLUMN tags text AFTER referred_by',
+                'meta_data' => 'ADD COLUMN meta_data text AFTER tags'
+            );
+            
+            foreach ($missing_columns as $column => $sql) {
+                if (!in_array($column, $columns)) {
+                    $wpdb->query("ALTER TABLE $customers_table $sql");
+                }
+            }
+            
+            // Rename order_count to orders_count if needed
+            if (in_array('order_count', $columns) && !in_array('orders_count', $columns)) {
+                $wpdb->query("ALTER TABLE $customers_table CHANGE COLUMN order_count orders_count int(11) DEFAULT 0");
+            }
+            
+            // Add unique index for referral_code if it doesn't exist
+            $indices = $wpdb->get_results("SHOW INDEX FROM $customers_table");
+            $index_names = array();
+            foreach ($indices as $index) {
+                $index_names[] = $index->Key_name;
+            }
+            
+            if (!in_array('idx_referral_code', $index_names)) {
+                $wpdb->query("ALTER TABLE $customers_table ADD UNIQUE KEY idx_referral_code (referral_code)");
+            }
+        }
+    }/**
      * Create all required database tables.
      *
      * @since    1.0.0
@@ -207,50 +318,51 @@ class ZPOS_Database {
         global $wpdb;
 
         $table_name = $wpdb->prefix . 'zpos_customers';
-        $charset_collate = $wpdb->get_charset_collate();
-
-        $sql = "CREATE TABLE $table_name (
+        $charset_collate = $wpdb->get_charset_collate();        $sql = "CREATE TABLE $table_name (
             id int(11) NOT NULL AUTO_INCREMENT,
             first_name varchar(100) NOT NULL,
             last_name varchar(100) NOT NULL,
-            email varchar(100),
+            email varchar(100) UNIQUE,
             phone varchar(20),
+            address_line_1 varchar(255),
+            address_line_2 varchar(255),
+            city varchar(100),
+            state varchar(100),
+            postal_code varchar(20),
+            country varchar(100) DEFAULT 'VN',
             date_of_birth date,
-            gender varchar(10),
-            company varchar(100),
-            billing_address_1 varchar(255),
-            billing_address_2 varchar(255),
-            billing_city varchar(100),
-            billing_state varchar(100),
-            billing_postal_code varchar(20),
-            billing_country varchar(50),
-            shipping_address_1 varchar(255),
-            shipping_address_2 varchar(255),
-            shipping_city varchar(100),
-            shipping_state varchar(100),
-            shipping_postal_code varchar(20),
-            shipping_country varchar(50),
+            gender enum('male', 'female', 'other') DEFAULT NULL,
+            customer_group varchar(50) DEFAULT 'general',
+            discount_percent decimal(5,2) DEFAULT 0.00,
+            credit_limit decimal(10,2) DEFAULT 0.00,
+            total_spent decimal(10,2) DEFAULT 0.00,
+            orders_count int(11) DEFAULT 0,
+            last_order_date datetime DEFAULT NULL,
+            avatar_url varchar(500),
             notes text,
-            total_spent decimal(10,2) NOT NULL DEFAULT 0.00,
-            order_count int(11) NOT NULL DEFAULT 0,
-            average_order_value decimal(10,2) NOT NULL DEFAULT 0.00,
-            last_order_date datetime,
-            customer_group varchar(50) DEFAULT 'regular',
-            status varchar(20) NOT NULL DEFAULT 'active',
-            woocommerce_id int(11),
-            sync_status varchar(20) DEFAULT 'none',
-            last_sync datetime,
+            status varchar(20) DEFAULT 'active',
+            woocommerce_id int(11) DEFAULT NULL,
+            wordpress_user_id int(11) DEFAULT NULL,
+            loyalty_points int(11) DEFAULT 0,
+            referral_code varchar(50),
+            referred_by int(11) DEFAULT NULL,
+            tags text,
+            meta_data text,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             UNIQUE KEY idx_email (email),
+            UNIQUE KEY idx_referral_code (referral_code),
             KEY idx_phone (phone),
             KEY idx_full_name (first_name, last_name),
             KEY idx_customer_group (customer_group),
             KEY idx_status (status),
             KEY idx_woocommerce (woocommerce_id),
-            KEY idx_sync_status (sync_status),
-            KEY idx_total_spent (total_spent)
+            KEY idx_wordpress_user (wordpress_user_id),
+            KEY idx_total_spent (total_spent),
+            KEY idx_orders_count (orders_count),
+            KEY idx_loyalty_points (loyalty_points),
+            KEY idx_referred_by (referred_by)
         ) $charset_collate;";
 
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');

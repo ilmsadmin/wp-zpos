@@ -523,20 +523,39 @@ class ZPOS_Admin_Menus {
     
     /**
      * Initialize AJAX handlers
-     */
-    private function init_ajax_handlers() {
+     */    private function init_ajax_handlers() {
         // Dashboard AJAX handlers
         add_action('wp_ajax_zpos_get_recent_activity', array($this, 'ajax_get_recent_activity'));
         add_action('wp_ajax_zpos_get_dashboard_stats', array($this, 'ajax_get_dashboard_stats'));
         add_action('wp_ajax_zpos_get_chart_data', array($this, 'ajax_get_chart_data'));
         
+        // Orders AJAX handlers
+        add_action('wp_ajax_zpos_get_orders', array($this, 'ajax_get_orders'));
+        add_action('wp_ajax_zpos_update_order_status', array($this, 'ajax_update_order_status'));
+        add_action('wp_ajax_zpos_bulk_update_order_status', array($this, 'ajax_bulk_update_order_status'));
+        add_action('wp_ajax_zpos_sync_woocommerce_orders', array($this, 'ajax_sync_woocommerce_orders'));
+        add_action('wp_ajax_zpos_export_orders', array($this, 'ajax_export_orders'));
+        add_action('wp_ajax_zpos_get_order_details', array($this, 'ajax_get_order_details'));
+        
+        // Warranty AJAX handlers
+        add_action('wp_ajax_zpos_get_warranties', array($this, 'ajax_get_warranties'));
+        add_action('wp_ajax_zpos_add_warranty_package', array($this, 'ajax_add_warranty_package'));
+        add_action('wp_ajax_zpos_edit_warranty_package', array($this, 'ajax_edit_warranty_package'));
+        add_action('wp_ajax_zpos_delete_warranty_package', array($this, 'ajax_delete_warranty_package'));
+        add_action('wp_ajax_zpos_register_warranty', array($this, 'ajax_register_warranty'));
+        add_action('wp_ajax_zpos_search_warranty', array($this, 'ajax_search_warranty'));
+        add_action('wp_ajax_zpos_update_warranty_status', array($this, 'ajax_update_warranty_status'));
+        
         // Reports AJAX handlers
         add_action('wp_ajax_zpos_generate_report', array($this, 'ajax_generate_report'));
         add_action('wp_ajax_zpos_export_report', array($this, 'ajax_export_report'));
+        add_action('wp_ajax_zpos_get_revenue_data', array($this, 'ajax_get_revenue_data'));
+        add_action('wp_ajax_zpos_get_product_performance', array($this, 'ajax_get_product_performance'));
         
         // Settings AJAX handlers
         add_action('wp_ajax_zpos_save_settings', array($this, 'ajax_save_settings'));
         add_action('wp_ajax_zpos_reset_settings', array($this, 'ajax_reset_settings'));
+        add_action('wp_ajax_zpos_test_woocommerce_connection', array($this, 'ajax_test_woocommerce_connection'));
     }
 
     /**
@@ -693,9 +712,7 @@ class ZPOS_Admin_Menus {
         } else {
             wp_send_json_error(__('Failed to reset settings.', 'zpos'));
         }
-    }
-
-    /**
+    }    /**
      * Show integration success notice
      *
      * @since    1.0.0
@@ -713,5 +730,245 @@ class ZPOS_Admin_Menus {
                 set_transient('zpos_integration_notice_shown', true, DAY_IN_SECONDS);
             }
         }
+    }
+
+    // ========================================================================
+    // ORDERS AJAX HANDLERS
+    // ========================================================================
+
+    /**
+     * AJAX handler for getting orders
+     */
+    public function ajax_get_orders() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+
+        if (!class_exists('ZPOS_Orders')) {
+            require_once ZPOS_PLUGIN_DIR . 'includes/orders.php';
+        }
+
+        $orders = new ZPOS_Orders();
+        $result = $orders->ajax_get_orders();
+    }
+
+    /**
+     * AJAX handler for updating order status
+     */
+    public function ajax_update_order_status() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+
+        if (!class_exists('ZPOS_Orders')) {
+            require_once ZPOS_PLUGIN_DIR . 'includes/orders.php';
+        }
+
+        $orders = new ZPOS_Orders();
+        $result = $orders->ajax_update_order_status();
+    }
+
+    /**
+     * AJAX handler for bulk updating order status
+     */
+    public function ajax_bulk_update_order_status() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+
+        if (!class_exists('ZPOS_Orders')) {
+            require_once ZPOS_PLUGIN_DIR . 'includes/orders.php';
+        }
+
+        $orders = new ZPOS_Orders();
+        $result = $orders->ajax_bulk_update_order_status();
+    }
+
+    /**
+     * AJAX handler for syncing WooCommerce orders
+     */
+    public function ajax_sync_woocommerce_orders() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+
+        if (!class_exists('ZPOS_Orders')) {
+            require_once ZPOS_PLUGIN_DIR . 'includes/orders.php';
+        }
+
+        $orders = new ZPOS_Orders();
+        $result = $orders->ajax_sync_woocommerce_orders();
+    }
+
+    /**
+     * AJAX handler for exporting orders
+     */
+    public function ajax_export_orders() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+
+        if (!class_exists('ZPOS_Orders')) {
+            require_once ZPOS_PLUGIN_DIR . 'includes/orders.php';
+        }
+
+        $orders = new ZPOS_Orders();
+        $result = $orders->ajax_export_orders();
+    }
+
+    /**
+     * AJAX handler for getting order details
+     */
+    public function ajax_get_order_details() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+
+        if (!class_exists('ZPOS_Orders')) {
+            require_once ZPOS_PLUGIN_DIR . 'includes/orders.php';
+        }
+
+        $orders = new ZPOS_Orders();
+        $result = $orders->ajax_get_order_details();
+    }
+
+    // ========================================================================
+    // WARRANTY AJAX HANDLERS
+    // ========================================================================
+
+    /**
+     * AJAX handler for getting warranties
+     */
+    public function ajax_get_warranties() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+
+        if (!class_exists('ZPOS_Warranty')) {
+            require_once ZPOS_PLUGIN_DIR . 'includes/warranty.php';
+        }
+
+        $warranty = new ZPOS_Warranty();
+        $result = $warranty->ajax_get_warranties();
+    }
+
+    /**
+     * AJAX handler for adding warranty package
+     */
+    public function ajax_add_warranty_package() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+
+        if (!class_exists('ZPOS_Warranty')) {
+            require_once ZPOS_PLUGIN_DIR . 'includes/warranty.php';
+        }
+
+        $warranty = new ZPOS_Warranty();
+        $result = $warranty->ajax_add_warranty_package();
+    }
+
+    /**
+     * AJAX handler for editing warranty package
+     */
+    public function ajax_edit_warranty_package() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+
+        if (!class_exists('ZPOS_Warranty')) {
+            require_once ZPOS_PLUGIN_DIR . 'includes/warranty.php';
+        }
+
+        $warranty = new ZPOS_Warranty();
+        $result = $warranty->ajax_edit_warranty_package();
+    }
+
+    /**
+     * AJAX handler for deleting warranty package
+     */
+    public function ajax_delete_warranty_package() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+
+        if (!class_exists('ZPOS_Warranty')) {
+            require_once ZPOS_PLUGIN_DIR . 'includes/warranty.php';
+        }
+
+        $warranty = new ZPOS_Warranty();
+        $result = $warranty->ajax_delete_warranty_package();
+    }
+
+    /**
+     * AJAX handler for registering warranty
+     */
+    public function ajax_register_warranty() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+
+        if (!class_exists('ZPOS_Warranty')) {
+            require_once ZPOS_PLUGIN_DIR . 'includes/warranty.php';
+        }
+
+        $warranty = new ZPOS_Warranty();
+        $result = $warranty->ajax_register_warranty();
+    }
+
+    /**
+     * AJAX handler for searching warranty
+     */
+    public function ajax_search_warranty() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+
+        if (!class_exists('ZPOS_Warranty')) {
+            require_once ZPOS_PLUGIN_DIR . 'includes/warranty.php';
+        }
+
+        $warranty = new ZPOS_Warranty();
+        $result = $warranty->ajax_search_warranty();
+    }
+
+    /**
+     * AJAX handler for updating warranty status
+     */
+    public function ajax_update_warranty_status() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+
+        if (!class_exists('ZPOS_Warranty')) {
+            require_once ZPOS_PLUGIN_DIR . 'includes/warranty.php';
+        }
+
+        $warranty = new ZPOS_Warranty();
+        $result = $warranty->ajax_update_warranty_status();
+    }
+
+    // ========================================================================
+    // ADDITIONAL REPORTS AJAX HANDLERS
+    // ========================================================================
+
+    /**
+     * AJAX handler for getting revenue data
+     */
+    public function ajax_get_revenue_data() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+
+        if (!class_exists('ZPOS_Reports')) {
+            require_once ZPOS_PLUGIN_DIR . 'includes/reports.php';
+        }
+
+        $reports = new ZPOS_Reports();
+        $result = $reports->ajax_get_revenue_data();
+    }
+
+    /**
+     * AJAX handler for getting product performance data
+     */
+    public function ajax_get_product_performance() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+
+        if (!class_exists('ZPOS_Reports')) {
+            require_once ZPOS_PLUGIN_DIR . 'includes/reports.php';
+        }
+
+        $reports = new ZPOS_Reports();
+        $result = $reports->ajax_get_product_performance();
+    }
+
+    // ========================================================================
+    // ADDITIONAL SETTINGS AJAX HANDLERS
+    // ========================================================================
+
+    /**
+     * AJAX handler for testing WooCommerce connection
+     */
+    public function ajax_test_woocommerce_connection() {
+        check_ajax_referer('zpos_admin_nonce', 'nonce');
+
+        if (!class_exists('ZPOS_Settings')) {
+            require_once ZPOS_PLUGIN_DIR . 'includes/settings.php';
+        }
+
+        $settings = new ZPOS_Settings();
+        $result = $settings->ajax_test_woocommerce_connection();
     }
 }
